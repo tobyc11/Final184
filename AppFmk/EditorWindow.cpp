@@ -2,6 +2,7 @@
 #include "ui_EditorWindow.h"
 
 #include <PresentationSurfaceDesc.h>
+#include <QMessageBox>
 #include <QTimer>
 #include <RHIInstance.h>
 
@@ -43,7 +44,7 @@ EditorWindow::~EditorWindow() { delete ui; }
 void EditorWindow::InitializeRHI()
 {
     using namespace RHI;
-    Device = RHI::CInstance::Get().CreateDevice(EDeviceCreateHints::NoHint);
+    Device = RHI::CInstance::Get().CreateDevice(EDeviceCreateHints::Discrete);
 }
 
 void EditorWindow::InitializeRHIResources()
@@ -84,7 +85,16 @@ void EditorWindow::IdleProcess()
         bRHIInitializes = true;
     }
 
-    SwapChain->AcquireNextImage();
+    if (!SwapChain->AcquireNextImage())
+    {
+        SwapChain->AutoResize();
+        if (!SwapChain->AcquireNextImage())
+        {
+            QMessageBox messageBox;
+            messageBox.critical(0, "Error", "Could not resize swapchain!");
+            exit(-1);
+        }
+    }
     auto ctx = Device->GetImmediateContext();
     ctx->BeginRenderPass(*ScreenPass, { RHI::CClearValue(1.0f, 0.0f, 0.0f, 0.0f) });
     ctx->EndRenderPass();
