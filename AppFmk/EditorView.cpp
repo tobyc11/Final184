@@ -1,6 +1,3 @@
 #include "EditorView.h"
 
-CEditorView::CEditorView()
-{
-    setSurfaceType(QSurface::VulkanSurface);
-}
+CEditorView::CEditorView() { setSurfaceType(QSurface::VulkanSurface); }

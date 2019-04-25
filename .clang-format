@@ -1,0 +1,9 @@
+﻿---
+BasedOnStyle: WebKit
+AlignAfterOpenBracket: Align
+AllowShortFunctionsOnASingleLine: All
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeBraces: Allman
+ColumnLimit: '100'
+
+...

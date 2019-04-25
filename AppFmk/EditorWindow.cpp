@@ -1,13 +1,13 @@
 #include "EditorWindow.h"
 #include "ui_EditorWindow.h"
 
+#include <PresentationSurfaceDesc.h>
 #include <QTimer>
 #include <RHIInstance.h>
-#include <PresentationSurfaceDesc.h>
 
 #include <memory>
 
-//The main function is embedded in here for now
+// The main function is embedded in here for now
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
@@ -16,9 +16,9 @@ int main(int argc, char* argv[])
     return app.exec();
 }
 
-EditorWindow::EditorWindow(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::EditorWindow)
+EditorWindow::EditorWindow(QWidget* parent)
+    : QMainWindow(parent)
+    , ui(new Ui::EditorWindow)
 {
     ui->setupUi(this);
 
@@ -38,10 +38,7 @@ EditorWindow::EditorWindow(QWidget *parent) :
     idleTimer->start();
 }
 
-EditorWindow::~EditorWindow()
-{
-    delete ui;
-}
+EditorWindow::~EditorWindow() { delete ui; }
 
 void EditorWindow::InitializeRHI()
 {
@@ -52,8 +49,14 @@ void EditorWindow::InitializeRHI()
 void EditorWindow::InitializeRHIResources()
 {
     RHI::CPresentationSurfaceDesc surfaceDesc;
+#ifdef _WIN32
+    surfaceDesc.Type = RHI::EPresentationSurfaceDescType::Win32;
+    surfaceDesc.Win32.Window = reinterpret_cast<HWND>(EditorView->winId());
+    surfaceDesc.Win32.Instance = GetModuleHandle(NULL);
+#else
     surfaceDesc.Type = RHI::EPresentationSurfaceDescType::MacOS;
     surfaceDesc.MacOS.View = reinterpret_cast<const void*>(EditorView->winId());
+#endif
     SwapChain = Device->CreateSwapChain(surfaceDesc, RHI::EFormat::R8G8B8A8_UNORM);
 
     RHI::CImageViewDesc desc;
@@ -66,9 +69,9 @@ void EditorWindow::InitializeRHIResources()
     screenPassDesc.Width = EditorView->width();
     screenPassDesc.Height = EditorView->height();
     screenPassDesc.Layers = 1;
-    screenPassDesc.Attachments.emplace_back(swapChainView, RHI::CAttachmentLoadOp::Clear, RHI::CAttachmentStoreOp::Store);
-    screenPassDesc.Subpasses.resize(1);
-    screenPassDesc.Subpasses[0].AddColorAttachment(0);
+    screenPassDesc.AddAttachment(swapChainView, RHI::EAttachmentLoadOp::Clear,
+                                 RHI::EAttachmentStoreOp::Store);
+    screenPassDesc.NextSubpass().AddColorAttachment(0);
     ScreenPass = Device->CreateRenderPass(screenPassDesc);
 }
 
@@ -83,7 +86,7 @@ void EditorWindow::IdleProcess()
 
     SwapChain->AcquireNextImage();
     auto ctx = Device->GetImmediateContext();
-    ctx->BeginRenderPass(ScreenPass, { RHI::CClearValue(1.0f, 0.0f, 0.0f, 0.0f)});
+    ctx->BeginRenderPass(*ScreenPass, { RHI::CClearValue(1.0f, 0.0f, 0.0f, 0.0f) });
     ctx->EndRenderPass();
 
     RHI::CSwapChainPresentInfo presentInfo;

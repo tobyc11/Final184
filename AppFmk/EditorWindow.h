@@ -1,9 +1,10 @@
 #pragma once
-#include <QMainWindow>
 #include "EditorView.h"
+#include <QMainWindow>
 #include <RHIInstance.h>
 
-namespace Ui {
+namespace Ui
+{
 class EditorWindow;
 }
 
@@ -12,7 +13,7 @@ class EditorWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit EditorWindow(QWidget *parent = nullptr);
+    explicit EditorWindow(QWidget* parent = nullptr);
     ~EditorWindow();
 
 protected:
@@ -21,7 +22,7 @@ protected:
     void IdleProcess();
 
 private:
-    Ui::EditorWindow *ui;
+    Ui::EditorWindow* ui;
     CEditorView* EditorView;
 
     // RHI objects
