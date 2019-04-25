@@ -1,2 +1,4 @@
 .vscode
 CMakeLists.txt.user
+.vs/
+CMakeSettings.json
