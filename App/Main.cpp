@@ -164,6 +164,45 @@ const double tickInterval = 1.0 / (double)tickRate;
 
 using namespace std::chrono_literals;
 
+class Control {
+public:
+    enum class Sticky {
+        MoveLeft = 0,
+        MoveRight,
+        MoveForward,
+        MoveBack,
+        MAX_VAL
+    };
+    enum class Analog {
+        CameraPitch = 0, // Up/down
+        CameraYaw, // Left/right
+        MAX_VAL
+    };
+
+private:
+    bool sticky_states[(size_t)Sticky::MAX_VAL] = {};
+    float analog_states[(size_t)Analog::MAX_VAL] = {};
+
+public:
+    void setSticky(Sticky which, bool active) {
+        sticky_states[(size_t)which] = active;
+    }
+    bool getSticky(Sticky which) {
+        return sticky_states[(size_t)which];
+    }
+
+    void setAnalog(Analog which, float val) {
+        analog_states[(size_t)which] = val;
+    }
+
+    int xAxis() {
+        return getSticky(Sticky::MoveLeft) - getSticky(Sticky::MoveRight);
+    }
+    int yAxis() {
+        return getSticky(Sticky::MoveForward) - getSticky(Sticky::MoveBack);
+    }
+};
+
 void game_logic()
 {
     uint64_t ticksElapsed = 0;
@@ -266,6 +305,7 @@ int main(int argc, char* argv[])
     auto ctx = device->GetImmediateContext();
 
     std::thread physicsThread(game_logic);
+    Control control;
 
     // Setup Render Conductor
     DeferredConductor conductor(ctx, device, swapChain);
@@ -276,8 +316,60 @@ int main(int argc, char* argv[])
         while (SDL_PollEvent(&event))
         {
             ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT)
+
+            switch (event.type) {
+            case SDL_QUIT:
                 terminated = true;
+                break;
+            case SDL_WINDOWEVENT:
+            case SDL_WINDOWEVENT_RESIZED:
+            {
+                swapChain->Resize(UINT32_MAX, UINT32_MAX);
+                uint32_t width, height;
+                swapChain->GetSize(width, height);
+                screenPass->Resize(width, height);
+                break;
+            }
+            case SDL_KEYDOWN:
+            case SDL_KEYUP:
+            {
+                SDL_Keysym key = event.key.keysym;
+                int state = event.key.state;
+
+                Control::Sticky which_input;
+                bool input_valid = !event.key.repeat;
+
+                switch (key.scancode) {
+                case SDL_SCANCODE_W:
+                    which_input = Control::Sticky::MoveForward; break;
+                case SDL_SCANCODE_A:
+                    which_input = Control::Sticky::MoveLeft; break;
+                case SDL_SCANCODE_S:
+                    which_input = Control::Sticky::MoveBack; break;
+                case SDL_SCANCODE_D:
+                    which_input = Control::Sticky::MoveRight; break;
+                case SDL_SCANCODE_ESCAPE:
+                    SDL_SetRelativeMouseMode(SDL_FALSE);
+                    break;
+                case SDL_SCANCODE_RETURN:
+                    SDL_SetRelativeMouseMode(SDL_TRUE);
+                    break;
+                default:
+                    input_valid = false; break;
+                }
+
+                if (!input_valid) break;
+
+                control.setSticky(which_input, state == SDL_PRESSED);
+                break;
+            }
+            case SDL_MOUSEMOTION:
+            {
+                control.setAnalog(Control::Analog::CameraYaw, event.motion.xrel);
+                control.setAnalog(Control::Analog::CameraPitch, event.motion.yrel);
+                break;
+            }
+            }
         }
 
         // Draw GUI stuff
