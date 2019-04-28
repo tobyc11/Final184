@@ -26,7 +26,7 @@ void main() {
     position = modelview * position;
     position = projection * position;
 
-    n = mat3(projection) * v_normal;
+    n = normalize(mat3(modelview) * v_normal);
 	uv = v_uv;
     color = v_color;
 

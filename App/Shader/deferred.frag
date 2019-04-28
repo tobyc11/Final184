@@ -41,6 +41,8 @@ const float PI = 3.1415926f;
 const float radius = 1.0;
 const float cutoff = 32.0;
 
+const float attenuation = 1.0;
+
 float getAO(vec2 uv) {
     vec3 cpos = getCSpos(uv);
 
@@ -63,14 +65,14 @@ float getAO(vec2 uv) {
         vec3 diff = spos - cpos;
         float dist = length(diff);
 
-        if (dist > 0.001) {
+        if (dist > 0.0001) {
             float occlution = dot(cnorm, diff) / dist;
 
-            ao += smoothstep(1.0 - dist / 3.0, 0.0, 1.0) * occlution * float(dist > 0.001);
+            ao += max(0.0, attenuation - dist / attenuation) * occlution;
         }
     }
 
-    return clamp(1.0 - ao / float(samplesCount), 0.0, 1.0);
+    return clamp(pow(1.0 - ao / float(samplesCount), 2.0), 0.0, 1.0);
 }
 
 void main() {
@@ -78,5 +80,5 @@ void main() {
 
     ao = vec3(getAO(uv));
 
-    outColor = vec4(vec3((getDepth(uv) - 0.999) * 1000.0), 1.0);
+    outColor = vec4(ao, 1.0);
 }

@@ -24,6 +24,10 @@ target_compile_definitions(${MODULE_NAME} PRIVATE -DAPP_SOURCE_DIR="${CMAKE_CURR
 
 target_link_libraries(${MODULE_NAME} PRIVATE ${ASSIMP_LIBRARIES})
 
+add_subdirectory(Shader)
+
+add_dependencies(${MODULE_NAME} Shader)
+
 if (LINUX)
 	target_link_libraries(${MODULE_NAME} PRIVATE ${X11_LIBRARIES} ${XCB_LIBRARIES} X11-xcb pthread)
 endif(LINUX)
