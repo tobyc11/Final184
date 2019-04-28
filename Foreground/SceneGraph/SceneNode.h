@@ -29,6 +29,7 @@ public:
     std::string GetName() const;
     CSceneNode* CreateChildNode();
     void RemoveChildNode(CSceneNode* node);
+    std::vector<CSceneNode*> GetChildren() const;
 
     void SetPosition(const tc::Vector3& position);
     void SetRotation(const tc::Quaternion& rotation);
@@ -65,7 +66,7 @@ public:
     const tc::Vector3& GetPosition() const;
     const tc::Quaternion& GetRotation() const;
     const tc::Vector3& GetScale() const;
-    const tc::Matrix3x4& GetTransform() const;
+    tc::Matrix3x4 GetTransform() const;
 
     tc::Vector3 GetWorldPosition() const;
     tc::Quaternion GetWorldRotation() const;
@@ -75,6 +76,10 @@ public:
     void AddPrimitive(std::shared_ptr<CPrimitive> primitive);
     void AddLight(std::shared_ptr<CLight> light);
     void SetCamera(std::shared_ptr<CCamera> camera);
+
+    const std::vector<std::shared_ptr<CPrimitive>>& GetPrimitives() const;
+    const std::vector<std::shared_ptr<CLight>>& GetLights() const;
+    const std::shared_ptr<CCamera>& GetCamera() const;
 
     const tc::BoundingBox& GetBoundingBox() const;
     tc::BoundingBox GetWorldBoundingBox() const;

@@ -26,8 +26,8 @@ void COctree::InsertObject(CSceneNode* object)
         // Can fit in one of the children?
         const tc::Vector3& childSize = CellArray[currCell].HalfSize;
         if (currDepth < MaxDepth && objBound.Size() < childSize
-            && objBound.Center() < CellArray[currCell].Center + CellArray[currCell].HalfSize
-            && objBound.Center() > CellArray[currCell].Center - CellArray[currCell].HalfSize)
+            && objBound.Center() <= CellArray[currCell].Center + CellArray[currCell].HalfSize
+            && objBound.Center() >= CellArray[currCell].Center - CellArray[currCell].HalfSize)
         {
             if (!HasChildren(CellArray[currCell]))
                 AllocateChildCells(CellArray[currCell]);
@@ -85,7 +85,7 @@ void COctree::AllocateChildCells(COctreeCell& cell)
         for (uint32_t y = 0; y < 2; y++)
             for (uint32_t z = 0; z < 2; z++)
             {
-                tc::Vector3 mask(x * 2 - 1, y * 2 - 1, z * 2 - 1);
+                tc::Vector3 mask((float)x * 2 - 1, (float)y * 2 - 1, (float)z * 2 - 1);
                 auto off = x | y << 1 | z << 2;
                 GetChild(cell, off).Center = cell.Center + quaterSize * mask;
                 GetChild(cell, off).HalfSize = cell.HalfSize / 2.0f;

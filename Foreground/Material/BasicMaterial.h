@@ -4,10 +4,16 @@
 namespace Foreground
 {
 
-//Please extend and specialize this class
+// Please extend and specialize this class
 class CBasicMaterial
 {
 public:
+    CBasicMaterial() = default;
+
+    void SetAlbedo(tc::Vector4 value) { Albedo = std::move(value); }
+    void SetMetallic(float value) { Metallic = value; }
+    void SetRoughness(float value) { Roughness = value; }
+
 private:
     tc::Vector4 Albedo;
     float Metallic;

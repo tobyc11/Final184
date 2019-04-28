@@ -46,6 +46,14 @@ void CSceneNode::RemoveChildNode(CSceneNode* node)
     // NO such child
 }
 
+std::vector<CSceneNode*> CSceneNode::GetChildren() const
+{
+    std::vector<CSceneNode*> result;
+    for (const auto& child : Children)
+        result.push_back(child.get());
+    return result;
+}
+
 void CSceneNode::SetPosition(const tc::Vector3& position)
 {
     Translation = position;
@@ -198,7 +206,7 @@ const tc::Quaternion& CSceneNode::GetRotation() const { return Rotation; }
 
 const tc::Vector3& CSceneNode::GetScale() const { return ScaleFactor; }
 
-const tc::Matrix3x4& CSceneNode::GetTransform() const
+tc::Matrix3x4 CSceneNode::GetTransform() const
 {
     return tc::Matrix3x4(Translation, Rotation, ScaleFactor);
 }
@@ -218,18 +226,29 @@ const tc::Matrix3x4& CSceneNode::GetWorldTransform() const
         else
             LocalToWorld = Parent->GetWorldTransform() * GetTransform();
 
-        if (Scene)
-            Scene->GetAccelStructure()->UpdateObject(const_cast<CSceneNode*>(this));
         bLocalToWorldDirty = false;
     }
     return LocalToWorld;
 }
 
-void CSceneNode::AddPrimitive(std::shared_ptr<CPrimitive> primitive) { bBoundingBoxDirty = true; }
+void CSceneNode::AddPrimitive(std::shared_ptr<CPrimitive> primitive)
+{
+    Primitives.emplace_back(std::move(primitive));
+    bBoundingBoxDirty = true;
+}
 
-void CSceneNode::AddLight(std::shared_ptr<CLight> light) { Lights.push_back(light); }
+void CSceneNode::AddLight(std::shared_ptr<CLight> light) { Lights.emplace_back(std::move(light)); }
 
-void CSceneNode::SetCamera(std::shared_ptr<CCamera> camera) { Camera = camera; }
+void CSceneNode::SetCamera(std::shared_ptr<CCamera> camera) { Camera = std::move(camera); }
+
+const std::vector<std::shared_ptr<CPrimitive>>& CSceneNode::GetPrimitives() const
+{
+    return Primitives;
+}
+
+const std::vector<std::shared_ptr<CLight>>& CSceneNode::GetLights() const { return Lights; }
+
+const std::shared_ptr<CCamera>& CSceneNode::GetCamera() const { return Camera; }
 
 const tc::BoundingBox& CSceneNode::GetBoundingBox() const
 {
@@ -241,9 +260,9 @@ const tc::BoundingBox& CSceneNode::GetBoundingBox() const
             auto primBb = primitive->GetBoundingBox();
             bb.Merge(primBb);
         }
+        if (Primitives.empty())
+            bb.Define(0.0f, 0.0f);
         BoundingBox = bb;
-        if (Scene)
-            Scene->GetAccelStructure()->UpdateObject(const_cast<CSceneNode*>(this));
         bBoundingBoxDirty = false;
     }
     return BoundingBox;

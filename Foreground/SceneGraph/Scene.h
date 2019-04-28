@@ -13,6 +13,8 @@ public:
 	CSceneNode* GetRootNode() const;
 	COctree* GetAccelStructure() const;
 
+	void ShowInspectorImGui();
+
 private:
     std::unique_ptr<CSceneNode> RootNode;
     std::unique_ptr<COctree> AccelStructure;
