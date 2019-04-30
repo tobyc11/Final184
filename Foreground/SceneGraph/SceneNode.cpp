@@ -1,4 +1,3 @@
-#pragma once
 #include "SceneNode.h"
 #include "Octree.h"
 #include "Scene.h"

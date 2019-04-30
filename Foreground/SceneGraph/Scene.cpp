@@ -20,7 +20,7 @@ static void InspectorDFSNode(CSceneNode* scnNode)
     if (ImGui::TreeNode(scnNode->GetName().c_str()))
     {
         if (!scnNode->GetPrimitives().empty())
-            ImGui::Text("Primitives: %d", scnNode->GetPrimitives().size());
+            ImGui::Text("Primitives: %lu", scnNode->GetPrimitives().size());
 
         for (CSceneNode* childNode : scnNode->GetChildren())
             InspectorDFSNode(childNode);
