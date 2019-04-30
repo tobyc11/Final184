@@ -46,8 +46,9 @@
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include <SceneGraph/Scene.h>
+#include <SceneGraph/glTFSceneImporter.h>
+using namespace Foreground;
 
 using namespace RHI;
 
@@ -408,11 +409,14 @@ int main(int argc, char* argv[])
     ubo->Unmap();
 
     // Load model
-    auto scene = loadModel(CResourceManager::Get().FindFile("nano.fbx"), device);
+    std::shared_ptr<CScene> scene = std::make_shared<CScene>();
+
+    CglTFSceneImporter importer(scene, *device);
+    importer.ImportFile("Models/Sponza.gltf");
 
     // Setup texture
-    CSamplerDesc samplerDesc;
-    auto sampler = device->CreateSampler(samplerDesc);
+    //CSamplerDesc samplerDesc;
+    //auto sampler = device->CreateSampler(samplerDesc);
 
     // Main render loop
     auto ctx = device->GetImmediateContext();
@@ -461,13 +465,13 @@ int main(int argc, char* argv[])
                                CClearValue(0.0f, 0.0f, 0.0f, 0.0f), CClearValue(1.0f, 0) });
         ctx->BindPipeline(*pso_gbuffer);
         ctx->BindBuffer(*ubo, 0, sizeof(ShadersUniform), 0, 1, 0);
-        scene->render(ctx);
+        //scene->render(ctx);
         ctx->EndRenderPass();
 
         ctx->BeginRenderPass(*screenPass, { CClearValue(0.0f, 0.0f, 0.0f, 0.0f) });
         ctx->BindPipeline(*pso_screen);
         ctx->BindBuffer(*ubo, 0, sizeof(ShadersUniform), 1, 0, 0);
-        ctx->BindSampler(*sampler, 0, 0, 0);
+        //ctx->BindSampler(*sampler, 0, 0, 0);
         ctx->BindImageView(*gbuffer.albedoView, 0, 1, 0);
         ctx->BindImageView(*gbuffer.normalsView, 0, 2, 0);
         ctx->BindImageView(*gbuffer.depthView, 0, 3, 0);
