@@ -1,4 +1,4 @@
-﻿#include "ResourceManager.h"
+﻿#include <Resources/ResourceManager.h>
 
 #include <Platform.h>
 
@@ -48,6 +48,10 @@
 
 #include <SceneGraph/Scene.h>
 #include <SceneGraph/glTFSceneImporter.h>
+
+#include <Renderer/RenderConductor.h>
+#include <Renderer/DeferredConductor.h>
+
 using namespace Foreground;
 
 using namespace RHI;
@@ -149,118 +153,6 @@ static CRenderPass::Ref CreateScreenPass(CDevice::Ref device, CSwapChain::Ref sw
 }
 
 // ============================================================================
-//  Mesh stuff
-// ============================================================================
-
-struct Vertex
-{
-    glm::vec3 pos;
-    glm::vec3 normal;
-    glm::vec2 uv;
-    glm::vec3 color;
-};
-
-struct ShadersUniform
-{
-    glm::vec4 color;
-    glm::mat4 projection;
-    glm::mat4 modelview;
-    glm::mat4 projectionInverse;
-    float camera_near;
-    float camera_far;
-};
-
-struct Mesh
-{
-    CBuffer::Ref vbo;
-    std::vector<Vertex> vertices;
-};
-
-struct Model
-{
-    std::vector<Mesh> meshes;
-    std::vector<std::unique_ptr<Model>> subNodes;
-
-    void render(IRenderContext::Ref ctx)
-    {
-        for (Mesh& m : meshes)
-        {
-            ctx->BindVertexBuffer(0, *m.vbo, 0);
-            ctx->Draw(m.vertices.size(), 1, 0, 0);
-        }
-
-        for (const auto& m : subNodes)
-        {
-            m->render(ctx);
-        }
-    }
-};
-
-std::unique_ptr<Model> processNode(aiNode* node, const aiScene* scene, CDevice::Ref device)
-{
-    auto model = std::make_unique<Model>();
-
-    if (node->mNumMeshes > 0)
-    {
-        for (unsigned int i = 0; i < node->mNumMeshes; i++)
-        {
-            aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-
-            Mesh m;
-
-            for (unsigned int i = 0; i < mesh->mNumFaces; i++)
-            {
-                aiFace face = mesh->mFaces[i];
-                for (unsigned int j = 0; j < face.mNumIndices; j++)
-                {
-                    int ind = face.mIndices[j];
-                    Vertex v = {
-                        { mesh->mVertices[ind].x, mesh->mVertices[ind].y, mesh->mVertices[ind].z },
-                        { mesh->mNormals[ind].x, mesh->mNormals[ind].y, mesh->mNormals[ind].z },
-                        { 0.0, 0.0 },
-                        { 1.0, 1.0, 1.0 }
-                    };
-                    if (mesh->mTextureCoords[0])
-                    {
-                        v.uv = glm::vec2(mesh->mTextureCoords[0][ind].x,
-                                         mesh->mTextureCoords[0][ind].y);
-                    }
-                    m.vertices.push_back(v);
-                }
-            }
-
-            m.vbo = device->CreateBuffer(m.vertices.size() * sizeof(Vertex),
-                                         EBufferUsageFlags::VertexBuffer, m.vertices.data());
-
-            model->meshes.push_back(m);
-        }
-    }
-
-    for (unsigned int i = 0; i < node->mNumChildren; i++)
-    {
-        model->subNodes.push_back(processNode(node->mChildren[i], scene, device));
-    }
-
-    return model;
-}
-
-std::unique_ptr<Model> loadModel(const std::string& path, CDevice::Ref device)
-{
-    Assimp::Importer import;
-    const aiScene* scene =
-        import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
-
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-    {
-        std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
-        return nullptr;
-    }
-    // directory = path.substr(0, path.find_last_of('/'));
-
-    return processNode(scene->mRootNode, scene, device);
-}
-
-// ============================================================================
 //  Physics & game logic thread
 // ============================================================================
 bool terminated = false;
@@ -272,7 +164,7 @@ const double tickInterval = 1.0 / (double)tickRate;
 
 using namespace std::chrono_literals;
 
-void game_logic(CPipeline::Ref pso, CBuffer::Ref ubo)
+void game_logic()
 {
     uint64_t ticksElapsed = 0;
     uint64_t lastIntervalTicks = 0;
@@ -295,13 +187,6 @@ void game_logic(CPipeline::Ref pso, CBuffer::Ref ubo)
             tickRateLastUpdated = elapsedTime;
         }
 
-        // Graphics view stuff
-        ShadersUniform* uniform = static_cast<ShadersUniform*>(ubo->Map(0, sizeof(ShadersUniform)));
-        uniform->color = { std::sin(elapsedTime), std::cos(elapsedTime), 1.0f, 1.0f };
-        uniform->modelview = glm::lookAt(
-            glm::vec3(std::sin(elapsedTime) * 16.0f, 8.0f, std::cos(elapsedTime) * 16.0f),
-            glm::vec3(0.0f, 8.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        ubo->Unmap();
 
         ticksElapsed++;
 
@@ -371,63 +256,19 @@ int main(int argc, char* argv[])
     ImGui_ImplSDL2_InitForVulkan(window);
     CRHIImGuiBackend::Init(device, screenPass);
 
-    // Setup pipeline
-    CPipeline::Ref pso_gbuffer;
-    {
-        CPipelineDesc pipelineDesc;
-        pipelineDesc.VS = LoadSPIRV(device, "gbuffers.vert.spv");
-        pipelineDesc.PS = LoadSPIRV(device, "gbuffers.frag.spv");
-        pipelineDesc.RasterizerState.CullMode = ECullModeFlags::None;
-        pipelineDesc.RenderPass = gbufferPass;
-
-        CVertexInputBindingDesc vertInputBinding = { 0, sizeof(Vertex), false };
-
-        pipelineDesc.VertexAttributes = {
-            { 0, EFormat::R32G32B32_SFLOAT, offsetof(Vertex, pos), 0 },
-            { 1, EFormat::R32G32B32_SFLOAT, offsetof(Vertex, normal), 0 },
-            { 2, EFormat::R32G32_SFLOAT, offsetof(Vertex, uv), 0 },
-            { 3, EFormat::R32G32B32_SFLOAT, offsetof(Vertex, color), 0 }
-        };
-        pipelineDesc.VertexBindings = { vertInputBinding };
-
-        pso_gbuffer = device->CreatePipeline(pipelineDesc);
-    }
-
-    CPipeline::Ref pso_screen;
-    {
-        CPipelineDesc pipelineDesc;
-        pipelineDesc.VS = LoadSPIRV(device, "deferred.vert.spv");
-        pipelineDesc.PS = LoadSPIRV(device, "deferred.frag.spv");
-        pipelineDesc.RasterizerState.CullMode = ECullModeFlags::None;
-        pipelineDesc.RenderPass = screenPass;
-
-        pso_screen = device->CreatePipeline(pipelineDesc);
-    }
-
-    // Setup uniforms
-    auto ubo = device->CreateBuffer(sizeof(ShadersUniform), EBufferUsageFlags::ConstantBuffer);
-    ShadersUniform* uniform = static_cast<ShadersUniform*>(ubo->Map(0, sizeof(ShadersUniform)));
-    uniform->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    uniform->projection = glm::perspective(glm::radians(70.0), 640.0 / 480.0, 0.1, 50.0);
-    uniform->projection[1][1] *= -1;
-    uniform->projectionInverse = glm::inverse(uniform->projection);
-    uniform->modelview = glm::mat4(1.0);
-    ubo->Unmap();
-
     // Load model
     std::shared_ptr<CScene> scene = std::make_shared<CScene>();
 
     CglTFSceneImporter importer(scene, *device);
-    importer.ImportFile("Models/Sponza.gltf");
+    importer.ImportFile(CResourceManager::Get().FindFile("Models/Sponza.gltf"));
 
-    // Setup texture
-    //CSamplerDesc samplerDesc;
-    //auto sampler = device->CreateSampler(samplerDesc);
-
-    // Main render loop
+    // Start render loop
     auto ctx = device->GetImmediateContext();
 
-    std::thread physicsThread(game_logic, pso_gbuffer, ubo);
+    std::thread physicsThread(game_logic);
+
+    // Setup Render Conductor
+    DeferredConductor conductor(ctx, device, swapChain);
 
     while (!terminated)
     {
@@ -440,7 +281,7 @@ int main(int argc, char* argv[])
         }
 
         // Draw GUI stuff
-        CRHIImGuiBackend::NewFrame();
+        /*CRHIImGuiBackend::NewFrame();
         ImGui_ImplSDL2_NewFrame(window);
         ImGui::NewFrame();
 
@@ -451,7 +292,7 @@ int main(int argc, char* argv[])
         ImGui::Text("Physics tick rate: %f", physicsTickRate);
         ImGui::Text("Elapsed time: %f", elapsedTime);
 
-        ImGui::End();
+        ImGui::End();*/
 
         // swapchain stuff
         bool swapOk = swapChain->AcquireNextImage();
@@ -466,27 +307,7 @@ int main(int argc, char* argv[])
         }
 
         // Record render pass
-        ctx->BeginRenderPass(*gbufferPass,
-                             { CClearValue(0.2f, 0.3f, 0.4f, 0.0f),
-                               CClearValue(0.0f, 0.0f, 0.0f, 0.0f), CClearValue(1.0f, 0) });
-        ctx->BindPipeline(*pso_gbuffer);
-        ctx->BindBuffer(*ubo, 0, sizeof(ShadersUniform), 0, 1, 0);
-        //scene->render(ctx);
-        ctx->EndRenderPass();
-
-        ctx->BeginRenderPass(*screenPass, { CClearValue(0.0f, 0.0f, 0.0f, 0.0f) });
-        ctx->BindPipeline(*pso_screen);
-        ctx->BindBuffer(*ubo, 0, sizeof(ShadersUniform), 1, 0, 0);
-        //ctx->BindSampler(*sampler, 0, 0, 0);
-        ctx->BindImageView(*gbuffer.albedoView, 0, 1, 0);
-        ctx->BindImageView(*gbuffer.normalsView, 0, 2, 0);
-        ctx->BindImageView(*gbuffer.depthView, 0, 3, 0);
-        ctx->Draw(6, 1, 0, 0);
-
-        ImGui::Render();
-        CRHIImGuiBackend::RenderDrawData(ImGui::GetDrawData(), ctx);
-
-        ctx->EndRenderPass();
+        conductor.ProcessAndSubmit();
 
         // Present
         CSwapChainPresentInfo info;

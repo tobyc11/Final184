@@ -26,3 +26,6 @@ add_subdirectory(SPIRV-Cross)
 add_subdirectory(RHI)
 add_subdirectory(Foreground)
 add_subdirectory(App)
+
+add_subdirectory(Shader)
+

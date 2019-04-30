@@ -7,7 +7,6 @@ file(GLOB APP_SOURCES *.cpp *.h)
 add_executable(${MODULE_NAME} ${APP_SOURCES})
 target_link_libraries(${MODULE_NAME} PRIVATE RHI)
 target_link_libraries(${MODULE_NAME} PRIVATE Foreground)
-target_compile_definitions(${MODULE_NAME} PRIVATE -DAPP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 find_package(glm REQUIRED)
 target_link_libraries(${MODULE_NAME} PRIVATE glm)
@@ -35,7 +34,5 @@ endif()
 if (LINUX)
         target_link_libraries(${MODULE_NAME} PRIVATE ${X11_LIBRARIES} ${XCB_LIBRARIES} X11-xcb pthread)
 endif(LINUX)
-
-add_subdirectory(Shader)
 
 add_dependencies(${MODULE_NAME} Shader)

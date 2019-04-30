@@ -1,6 +1,7 @@
 #pragma once
-#include "Primitive.h"
+
 #include "RenderView.h"
+#include <SceneGraph/Primitive.h>
 #include <vector>
 
 namespace Foreground
@@ -11,10 +12,10 @@ namespace Foreground
 class CRenderConductor
 {
 public:
-    void SetMainView(CRenderView* view);
-    void SetMainDrawList(std::vector<CPrimitive*> drawList);
+    virtual void SetMainView(CRenderView* view) = 0;
+    virtual void SetMainDrawList(std::vector<CPrimitive*> drawList) = 0;
 
-    void ProcessAndSubmit();
+    virtual void ProcessAndSubmit() = 0;
 };
 
 } /* namespace Foreground */

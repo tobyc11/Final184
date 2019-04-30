@@ -5,12 +5,18 @@ set(CMAKE_CXX_STANDARD 17)
 file(GLOB RENDER_SOURCES
     Material/*.h Material/*.cpp
     Renderer/*.h Renderer/*.cpp
+    Resources/*.h Resources/*.cpp
     SceneGraph/*.h SceneGraph/*.cpp
     Shader/*.h Shader/*.cpp
     Shape/*.h Shape/*.cpp
 )
 
 add_library(${MODULE_NAME} ${RENDER_SOURCES})
+
+target_compile_definitions(${MODULE_NAME} PRIVATE -DAPP_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../")
+
+find_package(glm REQUIRED)
+target_link_libraries(${MODULE_NAME} PRIVATE glm)
 
 include(GenerateExportHeader)
 target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
