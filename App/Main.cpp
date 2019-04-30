@@ -1,12 +1,18 @@
 ﻿#include "ResourceManager.h"
 
+#include <Platform.h>
+
+#if TC_OS == TC_OS_MAC_OS_X
+// Abstraction breaker will pull in vulkan.h, which is used by presentation surface desc
+#include <AbstractionBreaker.h>
+#include <SDL_vulkan.h>
+#endif
+
 #include <PresentationSurfaceDesc.h>
 #include <RHIImGuiBackend.h>
 #include <RHIInstance.h>
 #include <SDL.h>
 #include <SDL_syswm.h>
-
-#include <Platform.h>
 
 #if TC_OS == TC_OS_WINDOWS_NT
 #include <Windows.h>
@@ -314,7 +320,7 @@ int main(int argc, char* argv[])
     SDL_Window* window;
     SDL_Init(SDL_INIT_VIDEO);
     window = SDL_CreateWindow("RHI Triangle Demo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                              640, 480, SDL_WINDOW_RESIZABLE);
+                              640, 480, SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
     if (window == nullptr)
     {
         printf("Could not create window: %s\n", SDL_GetError());
@@ -335,6 +341,12 @@ int main(int argc, char* argv[])
     surfaceDesc.Linux.xconn = XGetXCBConnection(wmInfo.info.x11.display);
     surfaceDesc.Linux.window = wmInfo.info.x11.window;
     surfaceDesc.Type = EPresentationSurfaceDescType::Linux;
+#elif TC_OS == TC_OS_MAC_OS_X
+    auto nativeDevice = RHI::GetNativeDevice(device);
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    SDL_Vulkan_CreateSurface(window, nativeDevice.Instance, &surface);
+    surfaceDesc.Type = EPresentationSurfaceDescType::Vulkan;
+    surfaceDesc.Vulkan.Surface = surface;
 #endif
     auto swapChain = device->CreateSwapChain(surfaceDesc, EFormat::R8G8B8A8_UNORM);
 
