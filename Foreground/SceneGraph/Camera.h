@@ -46,7 +46,7 @@ private:
     float MagX = 1.0f;
     float MagY = 1.0f;
 
-	mutable bool bMatrixDirty = true;
+    mutable bool bMatrixValid = false;
     mutable tc::Matrix4 ProjectionMatrix;
 };
 
