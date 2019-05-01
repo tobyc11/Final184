@@ -5,86 +5,99 @@
 namespace Foreground
 {
 
-CCamera::CCamera(bool ortho): bIsOrthographic(ortho) {
-    assert(!ortho); // unimplemented
+CCamera::CCamera(bool ortho)
+    : bIsOrthographic(ortho)
+{
 }
 
-tc::Matrix4 CCamera::CalcPerspective() {
-    assert(!bIsOrthographic);
+void CCamera::SetAspectRatio(float value)
+{
+    AspectRatio = value;
+    bMatrixValid = false;
+}
 
-    if (!bMatrixValid) {
-        double rad_fovy = FovY / 180 * tc::M_PI;
-        double y_slope = tan(rad_fovy);
-        double x_slope = y_slope * AspectRatio; 
-        // aspect ratio = w / h   =>   w = aspect ratio * h
+float CCamera::GetAspectRatio() const { return AspectRatio; }
 
-        double right = x_slope * NearClip;
-        double top = y_slope * NearClip;
+void CCamera::SetFovY(float value)
+{
+    FovY = value;
+    bMatrixValid = false;
+}
 
-        double a = NearClip / right;
-        double b = NearClip / top;
-        double c = (FarClip + NearClip) / (NearClip - FarClip);
-        double d = -2 * FarClip * NearClip / (FarClip - NearClip);
+float CCamera::GetFovY() const { return FovY; }
 
-        bMatrixValid = true;
-        ProjectionMatrix = tc::Matrix4(
-                a,  0,  0,  0,
-                0,  b,  0,  0,
-                0,  0,  c,  d,
-                0,  0, -1,  0
-                );
-    }
+void CCamera::SetNearClip(float value)
+{
+    NearClip = value;
+    bMatrixValid = false;
+}
 
+void CCamera::SetFarClip(float value)
+{
+    FarClip = value;
+    bMatrixValid = false;
+}
+
+float CCamera::GetNearClip() const { return NearClip; }
+
+float CCamera::GetFarClip() const { return FarClip; }
+
+void CCamera::SetMagX(float value)
+{
+    MagX = value;
+    bMatrixValid = false;
+}
+
+void CCamera::SetMagY(float value)
+{
+    MagY = value;
+    bMatrixValid = false;
+}
+
+float CCamera::GetMagX() const { return MagX; }
+
+float CCamera::GetMagY() const { return MagY; }
+
+const tc::Matrix4& CCamera::GetMatrix() const
+{
+    if (!bMatrixValid)
+        if (bIsOrthographic)
+            ProjectionMatrix = CalcOrtho();
+        else if (FarClip >= 100000.f)
+            ProjectionMatrix = CalcInfPerspective();
+        else
+            ProjectionMatrix = CalcPerspective();
+    bMatrixValid = true;
     return ProjectionMatrix;
 }
 
-void CCamera::SetAspectRatio(float value) {
-    bMatrixValid = false;
-    AspectRatio = value;
-}
-float CCamera::GetAspectRatio() const {
-    return AspectRatio;
-}
-
-void CCamera::SetFovY(float value) {
-    bMatrixValid = false;
-    FovY = value;
-}
-float CCamera::GetFovY() const {
-    return FovY;
+tc::Frustum CCamera::GetFrustum() const
+{
+    tc::Frustum frustum;
+    frustum.Define(GetMatrix());
+    return frustum;
 }
 
-void CCamera::SetNearClip(float value) {
-    bMatrixValid = false;
-    NearClip = value;
-}
-float CCamera::GetNearClip() const {
-    return NearClip;
+tc::Matrix4 CCamera::CalcInfPerspective() const { return tc::Matrix4(); }
+
+tc::Matrix4 CCamera::CalcPerspective() const
+{
+    float rad_fovy = FovY / 180.f * tc::M_PI;
+    float y_slope = tan(rad_fovy);
+    float x_slope = y_slope * AspectRatio;
+    // aspect ratio = w / h   =>   w = aspect ratio * h
+
+    float right = x_slope * NearClip;
+    float top = y_slope * NearClip;
+
+    float a = NearClip / right;
+    float b = NearClip / top;
+    float c = (FarClip + NearClip) / (NearClip - FarClip);
+    float d = -2 * FarClip * NearClip / (FarClip - NearClip);
+
+    return tc::Matrix4(a, 0, 0, 0, 0, b, 0, 0, 0, 0, c, d, 0, 0, -1, 0);
 }
 
-void CCamera::SetFarClip(float value) {
-    bMatrixValid = false;
-    FarClip = value;
-}
-float CCamera::GetFarClip() const {
-    return FarClip;
-}
-
-
-void CCamera::SetMagX(float value) {
-    bMatrixValid = false;
-    MagX = value;
-}
-float CCamera::GetMagX() const {
-    return MagX;
-}
-
-void CCamera::SetMagY(float value) {
-    bMatrixValid = false;
-    MagY = value;
-}
-float CCamera::GetMagY() const {
-    return MagY;
-}
+tc::Matrix4 CCamera::CalcOrtho() const { return tc::Matrix4(); }
 
 } /* namespace Foreground */

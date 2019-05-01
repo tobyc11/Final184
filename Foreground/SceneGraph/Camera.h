@@ -1,4 +1,5 @@
 #pragma once
+#include <Frustum.h>
 #include <Matrix4.h>
 
 namespace Foreground
@@ -30,10 +31,13 @@ public:
     float GetMagX() const;
     float GetMagY() const;
 
+    const tc::Matrix4& GetMatrix() const;
+    tc::Frustum GetFrustum() const;
+
 protected:
-    tc::Matrix4 CalcInfPerspective();
-    tc::Matrix4 CalcPerspective();
-    tc::Matrix4 CalcOrtho();
+    tc::Matrix4 CalcInfPerspective() const;
+    tc::Matrix4 CalcPerspective() const;
+    tc::Matrix4 CalcOrtho() const;
 
 private:
     bool bIsOrthographic;
