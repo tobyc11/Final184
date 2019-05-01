@@ -80,7 +80,7 @@ void CMegaPipeline::Render()
     ctx->BeginRenderPass(*ScreenPass, { RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f) });
     ctx->BindPipeline(*BlitPipeline);
     ctx->BindSampler(*GlobalLinearSampler, 0, 0, 0);
-    ctx->BindImageView(*GBuffer1, 0, 1, 0);
+    ctx->BindImageView(*GBuffer0, 0, 1, 0);
     ctx->BindImageView(*GBufferDepth, 0, 2, 0);
     ctx->Draw(3, 1, 0, 0);
 
