@@ -26,6 +26,10 @@ All the basic infrastructures that make the project code base scalable and not c
 
 The project is a bit behind the original timeline, but we think it is benefitial to have a robust infrastructure in place before we start implementing complex algorithms as those are prone to subtle errors.
 
+Currently it loads Sponza and renders HBAO on it. (We have texture support but the AO is unfiltered so we directly show the AO image)
+
+![](HBAO_PoissonDisc12tap_NoBlur_Initial.PNG)
+
 ## Next steps
 
 - Complete "Megapipeline," a monolithic but extensible Vulkan rendering infrastructure

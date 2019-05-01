@@ -19,6 +19,6 @@ void main()
 	else
 	{
 		vec2 uv = vec2((inUV.x - 0.5) * 2, inUV.y);
-		outColor = texture(sampler2D(tn, s), uv);
+		outColor = texture(sampler2D(ta, s), uv);
 	}
 }

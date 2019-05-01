@@ -27,12 +27,27 @@ float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-const int samplesCount = 24;
+const int samplesCount = 12;
 const float PI = 3.1415926f;
-const float radius = 1.0;
+const float radius = 0.3;
 const float cutoff = 32.0;
 
 const float attenuation = 1.0;
+
+const vec2 poisson_12[12] = vec2 [] (
+	vec2(-0.326212, -0.40581),
+	vec2(-0.840144, -0.07358),
+	vec2(-0.695914,  0.457137),
+	vec2(-0.203345,  0.620716),
+	vec2(0.96234,   -0.194983),
+	vec2(0.473434,  -0.480026),
+	vec2(0.519456,   0.767022),
+	vec2(0.185461,  -0.893124),
+	vec2(0.507431,   0.064425),
+	vec2(0.89642,    0.412458),
+	vec2(-0.32194,  -0.932615),
+	vec2(-0.791559, -0.59771)
+);
 
 float getAO(vec2 uv) {
     vec3 cpos = getCSpos(uv);
@@ -45,11 +60,11 @@ float getAO(vec2 uv) {
 
     float adjRadius = radius / cpos.z;
 
+    float d = rand(uv) * 0.5 + 0.5;
+    
     for (int i = 0; i < samplesCount; i++) {
-        float r = rand(uv + vec2(float(i), 0.0f)) * 2.0f * PI;
-        float d = rand(uv + vec2(0.0f, float(i)));
 
-        vec2 offset = vec2(cos(r), sin(r)) * d * adjRadius;
+        vec2 offset = poisson_12[i] * d * adjRadius;
 
         vec3 spos = getCSpos(uv + offset);
 
@@ -73,5 +88,5 @@ void main() {
 
     vec3 albedo = texture(sampler2D(t_albedo, s), inUV).rgb;
 
-    outColor = vec4(albedo, 1.0);
+    outColor = vec4(ao, 1.0);
 }
