@@ -89,13 +89,17 @@ void CGBufferRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4&
             materialConst.BaseColor = basicMat->GetAlbedo();
             materialConst.MetallicRoughness.y = basicMat->GetMetallic();
             materialConst.MetallicRoughness.z = basicMat->GetRoughness();
-            materialConst.UseTextures = 0;
+            materialConst.UseTextures =
+                basicMat->GetAlbedoImage() || basicMat->GetMetallicRoughnessImage() ? 1 : 0;
 
             CStatcMeshVertexShader::PerPrimitiveConstants primitiveConstants;
             primitiveConstants.ModelMat = modelMat.ToMatrix4().Transpose();
 
             context.BindPipeline(*iter->second.Pipeline);
             CBasicMaterialShader::BindMaterialConstants(context, &materialConst);
+            CBasicMaterialShader::BindBaseColorTex(context, *basicMat->GetAlbedoImage());
+            CBasicMaterialShader::BindMetallicRoughnessTex(context,
+                                                           *basicMat->GetMetallicRoughnessImage());
             CStatcMeshVertexShader::BindPerPrimitiveConstants(context, &primitiveConstants);
             triMesh->Draw(context);
         }

@@ -8,8 +8,9 @@ layout(location = 0) out vec4 outColor;
 #include "EngineCommon.h"
 
 layout(set = 1, binding = 0) uniform sampler s;
-layout(set = 1, binding = 1) uniform texture2D t_normals;
-layout(set = 1, binding = 2) uniform texture2D t_depth;
+layout(set = 1, binding = 1) uniform texture2D t_albedo;
+layout(set = 1, binding = 2) uniform texture2D t_normals;
+layout(set = 1, binding = 3) uniform texture2D t_depth;
 
 float getDepth(vec2 uv) {
     return texture(sampler2D(t_depth, s), uv).r;
@@ -70,5 +71,7 @@ void main() {
 
     ao = vec3(getAO(inUV));
 
-    outColor = vec4(ao, 1.0);
+    vec3 albedo = texture(sampler2D(t_albedo, s), inUV).rgb;
+
+    outColor = vec4(albedo, 1.0);
 }

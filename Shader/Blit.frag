@@ -5,8 +5,9 @@ layout(location = 0) in vec2 inUV;
 layout(location = 0) out vec4 outColor;
 
 layout(set = 1, binding = 0) uniform sampler s;
-layout(set = 1, binding = 1) uniform texture2D t;
-layout(set = 1, binding = 2) uniform texture2D td;
+layout(set = 1, binding = 1) uniform texture2D ta;
+layout(set = 1, binding = 2) uniform texture2D tn;
+layout(set = 1, binding = 3) uniform texture2D td;
 
 void main()
 {
@@ -18,6 +19,6 @@ void main()
 	else
 	{
 		vec2 uv = vec2((inUV.x - 0.5) * 2, inUV.y);
-		outColor = texture(sampler2D(t, s), uv);
+		outColor = texture(sampler2D(tn, s), uv);
 	}
 }

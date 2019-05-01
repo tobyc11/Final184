@@ -172,10 +172,36 @@ public:
         if (iter != Materials.end())
             return iter->second;
 
+        const auto& m = glTFModel.materials[index];
+
         auto material = std::make_shared<CBasicMaterial>();
-        material->SetAlbedo(tc::Vector4(0.5f, 0.5f, 0.8f, 1.0f));
-        material->SetMetallic(0.0f);
-        material->SetRoughness(1.0f);
+        material->SetName(m.name);
+        auto baseColor = m.values.find("baseColor");
+        if (baseColor != m.values.end())
+            material->SetAlbedo(
+                tc::Vector4(baseColor->second.number_array[0], baseColor->second.number_array[1],
+                            baseColor->second.number_array[2], baseColor->second.number_array[3]));
+        else
+            material->SetAlbedo(tc::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        auto metallic = m.values.find("metallic");
+        if (metallic != m.values.end())
+            material->SetMetallic(metallic->second.number_value);
+        else
+            material->SetMetallic(1.0f);
+        auto roughness = m.values.find("roughness");
+        if (roughness != m.values.end())
+            material->SetRoughness(roughness->second.number_value);
+        else
+            material->SetRoughness(1.0f);
+
+        // Textures
+        auto baseColorTexture = m.values.find("baseColorTexture");
+        if (baseColorTexture != m.values.end())
+            material->SetAlbedoImage(GetImage(baseColorTexture->second.TextureIndex()));
+        auto metallicRoughnessTexture = m.values.find("metallicRoughnessTexture");
+        if (metallicRoughnessTexture != m.values.end())
+            material->SetMetallicRoughnessImage(
+                GetImage(metallicRoughnessTexture->second.TextureIndex()));
         Materials[index] = material;
         return material;
     }
