@@ -38,6 +38,8 @@ protected:
     void AllocateChildCells(COctreeCell& cell);
     bool HasChildren(const COctreeCell& cell);
 
+    void Intersect(size_t cell, const tc::Frustum& frustum, std::list<CSceneNode*>& result);
+
 private:
     static const size_t MaxDepth = 7;
     std::vector<COctreeCell> CellArray;

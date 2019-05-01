@@ -2,6 +2,8 @@
 #include "Shader/VertexShaderCommon.h"
 #include <BoundingBox.h>
 #include <Format.h>
+#include <Pipeline.h>
+#include <RenderContext.h>
 #include <ShaderModule.h>
 
 namespace Foreground
@@ -33,6 +35,24 @@ public:
         Attributes = std::move(attributes);
     }
 
+    void PipelineSetVertexInputDesc(RHI::CPipelineDesc& desc,
+                                    const std::map<EAttributeType, uint32_t>& locationMap) const
+    {
+        for (const auto& pair : locationMap)
+        {
+            auto iter = Attributes.find(pair.first);
+            if (iter == Attributes.end())
+                printf("Warning: required attribute not found in mesh.");
+            desc.VertexAttribFormat(pair.second, iter->second.Format, iter->second.Offset,
+                                    iter->second.BindingIndex);
+        }
+        for (size_t i = 0; i < BufferBindings.size(); i++)
+            if (BufferBindings[i].Buffer)
+            {
+                desc.VertexBinding(i, BufferBindings[i].Stride);
+            }
+    }
+
     void SetIndexBuffer(RHI::CBuffer::Ref buffer, RHI::EFormat format, uint32_t offset)
     {
         IndexBuffer = buffer;
@@ -48,6 +68,24 @@ public:
 
     const tc::BoundingBox& GetBoundingBox() const { return BoundingBox; }
     void SetBoundingBox(tc::BoundingBox bb) { BoundingBox = std::move(bb); }
+
+    void Draw(RHI::IRenderContext& context) const
+    {
+        for (size_t i = 0; i < BufferBindings.size(); i++)
+            if (BufferBindings[i].Buffer)
+            {
+                context.BindVertexBuffer(i, *BufferBindings[i].Buffer, BufferBindings[i].Offset);
+            }
+        if (IndexBuffer)
+        {
+            context.BindIndexBuffer(*IndexBuffer, IndexBufferOffset, IndexBufferFormat);
+            context.DrawIndexed(ElementCount, 1, 0, 0, 0);
+        }
+        else
+        {
+            context.Draw(ElementCount, 1, 0, 0);
+        }
+    }
 
 private:
     std::array<CBufferBinding, 16> BufferBindings;

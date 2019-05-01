@@ -14,6 +14,10 @@ public:
     void SetMetallic(float value) { Metallic = value; }
     void SetRoughness(float value) { Roughness = value; }
 
+    const tc::Vector4& GetAlbedo() const { return Albedo; }
+    float GetMetallic() const { return Metallic; }
+    float GetRoughness() const { return Roughness; }
+
 private:
     tc::Vector4 Albedo;
     float Metallic;

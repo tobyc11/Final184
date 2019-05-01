@@ -11,7 +11,7 @@ namespace Foreground
 class CShaderFactory
 {
 public:
-    CShaderFactory(RHI::CDevice::Ref device);
+    CShaderFactory();
 
     template <typename T> std::shared_ptr<T> GetShader()
     {
@@ -27,7 +27,7 @@ public:
     }
 
 private:
-    RHI::CDevice::Ref Device;
+    //RHI::CDevice::Ref Device;
     std::unordered_map<size_t, std::weak_ptr<void>> Trackers;
 };
 

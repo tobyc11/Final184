@@ -11,21 +11,27 @@ uint32_t CStatcMeshVertexShader::GetAttributeLocation(EAttributeType type) const
 {
     switch (type)
     {
-    case Foreground::EAttributeType::Position:
+    case EAttributeType::Position:
         return 0;
-    case Foreground::EAttributeType::Normal:
+    case EAttributeType::Normal:
         return 1;
-    case Foreground::EAttributeType::Tangent:
+    case EAttributeType::Tangent:
         return 2;
-    case Foreground::EAttributeType::TexCoord0:
+    case EAttributeType::TexCoord0:
         return 3;
-    case Foreground::EAttributeType::TexCoord1:
-    case Foreground::EAttributeType::Color0:
-    case Foreground::EAttributeType::Joints0:
-    case Foreground::EAttributeType::Weights0:
+    case EAttributeType::TexCoord1:
+    case EAttributeType::Color0:
+    case EAttributeType::Joints0:
+    case EAttributeType::Weights0:
     default:
         throw std::runtime_error("Wrong shader???");
     }
+}
+
+std::map<EAttributeType, uint32_t> CStatcMeshVertexShader::GetAttributeLocationMap() const
+{
+    using E = EAttributeType;
+    return { { E::Position, 0 }, { E::Normal, 1 }, { E::Tangent, 2 }, { E::TexCoord0, 3 } };
 }
 
 std::string CStatcMeshVertexShader::GetInterpolantsHeader()

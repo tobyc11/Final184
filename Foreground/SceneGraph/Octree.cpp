@@ -69,9 +69,15 @@ void COctree::UpdateObject(CSceneNode* object)
     InsertObject(object);
 }
 
-void COctree::Intersect(const tc::Ray& ray, std::list<CSceneNode*>& result) {}
+void COctree::Intersect(const tc::Ray& ray, std::list<CSceneNode*>& result)
+{
+    throw "unimplemented";
+}
 
-void COctree::Intersect(const tc::Frustum& frustum, std::list<CSceneNode*>& result) {}
+void COctree::Intersect(const tc::Frustum& frustum, std::list<CSceneNode*>& result)
+{
+    Intersect(0, frustum, result);
+}
 
 void COctree::AllocateChildCells(COctreeCell& cell)
 {
@@ -94,5 +100,26 @@ void COctree::AllocateChildCells(COctreeCell& cell)
 }
 
 bool COctree::HasChildren(const COctreeCell& cell) { return cell.ChildrenStartOffset != 0; }
+
+void COctree::Intersect(size_t cell, const tc::Frustum& frustum, std::list<CSceneNode*>& result)
+{
+    tc::BoundingBox cellBb(CellArray[cell].Center - CellArray[cell].HalfSize,
+                           CellArray[cell].Center + CellArray[cell].HalfSize);
+    if (frustum.IsInsideFast(cellBb) != tc::OUTSIDE)
+    {
+        // Loop over objects and test
+        for (CSceneNode* object : CellArray[cell].ObjectList)
+            if (frustum.IsInsideFast(object->GetWorldBoundingBox()) != tc::OUTSIDE)
+                result.push_back(object);
+
+        for (uint32_t x = 0; x < 2; x++)
+            for (uint32_t y = 0; y < 2; y++)
+                for (uint32_t z = 0; z < 2; z++)
+                {
+                    auto off = x | y << 1 | z << 2;
+                    Intersect(cell + off, frustum, result);
+                }
+    }
+}
 
 } /* namespace Foreground */

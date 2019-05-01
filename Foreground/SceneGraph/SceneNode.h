@@ -5,6 +5,7 @@
 #include <BoundingBox.h>
 #include <Matrix3x4.h>
 #include <Vector3.h>
+#include <atomic>
 #include <memory>
 #include <string>
 
@@ -25,6 +26,7 @@ class CSceneNode
 public:
     CSceneNode(CScene* scene, CSceneNode* parent);
 
+    CScene* GetScene() const { return Scene; }
     void SetName(const std::string& name);
     std::string GetName() const;
     CSceneNode* CreateChildNode();
@@ -84,6 +86,9 @@ public:
     const tc::BoundingBox& GetBoundingBox() const;
     tc::BoundingBox GetWorldBoundingBox() const;
 
+    void RetainDontKill() const { DontKillCounter++; }
+    void ReleaseDontKill() const { DontKillCounter--; }
+
 private:
     void MarkLocalToWorldDirty(bool recursive = true);
 
@@ -106,6 +111,9 @@ private:
 
     mutable bool bBoundingBoxDirty = true;
     mutable tc::BoundingBox BoundingBox;
+
+    // A node may be referenced by scene views etc. If that's the case, don't delete this node.
+    mutable std::atomic_uint32_t DontKillCounter = 0;
 };
 
 } /* namespace Foreground */

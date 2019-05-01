@@ -1,9 +1,58 @@
 #include "MegaPipeline.h"
+#include "GBufferRenderer.h"
 
 namespace Foreground
 {
 
-CMegaPipeline::CMegaPipeline(RHI::CSwapChain::Ref swapChain) {}
+CMegaPipeline::CMegaPipeline(RHI::CSwapChain::Ref swapChain)
+    : SwapChain(swapChain)
+    , GBufferRenderer(this)
+{
+    RHI::CSamplerDesc desc;
+    GlobalLinearSampler = RenderDevice->CreateSampler(desc);
+    desc.MinFilter = RHI::EFilter::Nearest;
+    desc.MagFilter = RHI::EFilter::Nearest;
+    desc.MipmapMode = RHI::ESamplerMipmapMode::Nearest;
+    GlobalNearestSampler = RenderDevice->CreateSampler(desc);
+    desc.AnisotropyEnable = true;
+    desc.MaxAnisotropy = 16.0f;
+    GlobalNiceSampler = RenderDevice->CreateSampler(desc);
+
+    CreateRenderPasses();
+    GBufferRenderer.SetRenderPass(GBufferPass);
+}
+
+void CMegaPipeline::SetSceneView(std::unique_ptr<CSceneView> sceneView)
+{
+    SceneView = std::move(sceneView);
+}
+
+void CMegaPipeline::Render()
+{
+    // Or render some test image?
+    if (!SceneView)
+        return;
+
+    // Does culling and stuff
+    SceneView->PrepareToRender();
+    GBufferRenderer.RenderList(*RenderDevice->GetImmediateContext(),
+                               SceneView->GetVisiblePrimModelMatrix(),
+                               SceneView->GetVisiblePrimitiveList());
+    SceneView->FrameFinished();
+}
+
+void CMegaPipeline::BindEngineCommon(RHI::IRenderContext& context)
+{
+    context.BindSampler(*GlobalNiceSampler, 0, 0, 0);
+    context.BindSampler(*GlobalLinearSampler, 0, 1, 0);
+    context.BindSampler(*GlobalNearestSampler, 0, 2, 0);
+
+    GlobalConstants constants;
+    constants.CameraPos = tc::Vector4(SceneView->GetCameraNode()->GetWorldPosition(), 1.0f);
+    constants.ViewMat = SceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4();
+    constants.ProjMat = SceneView->GetCameraNode()->GetCamera()->GetMatrix();
+    context.BindConstants(&constants, sizeof(GlobalConstants), 0, 3, 0);
+}
 
 void CMegaPipeline::CreateRenderPasses()
 {

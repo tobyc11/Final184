@@ -9,7 +9,7 @@ namespace Foreground
 {
 
 // Represents the most basic drawable unit
-class FOREGROUND_API CPrimitive
+class FOREGROUND_API CPrimitive : public std::enable_shared_from_this<CPrimitive>
 {
 public:
     tc::BoundingBox GetBoundingBox() const;
