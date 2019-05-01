@@ -18,6 +18,11 @@ RHI::CShaderModule::Ref CShaderCompileWorker::Compile()
     // For now just invoke the executable and see
     std::stringstream ss;
     ss << "glslc";
+    #ifdef DEBUG
+    ss << " -g -O0";
+    #else
+    ss << " -O";
+    #endif
     for (const auto& incDir : CompileEnv.IncludeDirs)
         ss << " -I" << incDir;
     for (const auto& pair : CompileEnv.Definitions)

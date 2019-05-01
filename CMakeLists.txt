@@ -20,6 +20,14 @@ add_library(imgui
 )
 target_include_directories(imgui INTERFACE imgui)
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+
+if (CMAKE_BUILD_TYPE EQUAL "DEBUG")
+set(GLSL_COMPILE_FLAGS "-g -O0")
+else()
+set(GLSL_COMPILE_FLAGS "-O")
+endif()
+
 add_subdirectory(Foundation)
 add_subdirectory(Math)
 add_subdirectory(SPIRV-Cross)
