@@ -86,6 +86,8 @@ public:
     const tc::BoundingBox& GetBoundingBox() const;
     tc::BoundingBox GetWorldBoundingBox() const;
 
+	void UpdateAccelStructure() const;
+
     void RetainDontKill() const { DontKillCounter++; }
     void ReleaseDontKill() const { DontKillCounter--; }
 
@@ -111,6 +113,8 @@ private:
 
     mutable bool bBoundingBoxDirty = true;
     mutable tc::BoundingBox BoundingBox;
+
+	mutable bool bAccelStructureDirty = true;
 
     // A node may be referenced by scene views etc. If that's the case, don't delete this node.
     mutable std::atomic_uint32_t DontKillCounter = 0;

@@ -35,9 +35,13 @@ void CMegaPipeline::Render()
 
     // Does culling and stuff
     SceneView->PrepareToRender();
-    GBufferRenderer.RenderList(*RenderDevice->GetImmediateContext(),
-                               SceneView->GetVisiblePrimModelMatrix(),
+    auto ctx = RenderDevice->GetImmediateContext();
+    ctx->BeginRenderPass(*GBufferPass,
+                         { RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f),
+                           RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f), RHI::CClearValue(1.0f, 0) });
+    GBufferRenderer.RenderList(*ctx, SceneView->GetVisiblePrimModelMatrix(),
                                SceneView->GetVisiblePrimitiveList());
+    ctx->EndRenderPass();
     SceneView->FrameFinished();
 }
 

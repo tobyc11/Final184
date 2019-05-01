@@ -17,7 +17,7 @@ public:
     {
         size_t id = tc::type_id<T>();
         auto iter = Trackers.find(id);
-        if (!iter->second.expired())
+        if (iter != Trackers.end() && !iter->second.expired())
             return std::static_pointer_cast<T>(iter->second.lock());
 
         // Otherwise create new instance of that shader
@@ -27,7 +27,7 @@ public:
     }
 
 private:
-    //RHI::CDevice::Ref Device;
+    // RHI::CDevice::Ref Device;
     std::unordered_map<size_t, std::weak_ptr<void>> Trackers;
 };
 

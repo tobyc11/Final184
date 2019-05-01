@@ -60,6 +60,7 @@ void COctree::EraseObject(CSceneNode* object)
 {
     size_t cellIndex = ObjectToNode[object];
     CellArray[cellIndex].ObjectList.erase(object);
+    ObjectToNode.erase(object);
 }
 
 void COctree::UpdateObject(CSceneNode* object)
@@ -112,13 +113,14 @@ void COctree::Intersect(size_t cell, const tc::Frustum& frustum, std::list<CScen
             if (frustum.IsInsideFast(object->GetWorldBoundingBox()) != tc::OUTSIDE)
                 result.push_back(object);
 
-        for (uint32_t x = 0; x < 2; x++)
-            for (uint32_t y = 0; y < 2; y++)
-                for (uint32_t z = 0; z < 2; z++)
-                {
-                    auto off = x | y << 1 | z << 2;
-                    Intersect(cell + off, frustum, result);
-                }
+        if (CellArray[cell].ChildrenStartOffset != 0)
+            for (uint32_t x = 0; x < 2; x++)
+                for (uint32_t y = 0; y < 2; y++)
+                    for (uint32_t z = 0; z < 2; z++)
+                    {
+                        auto off = x | y << 1 | z << 2;
+                        Intersect(CellArray[cell].ChildrenStartOffset + off, frustum, result);
+                    }
     }
 }
 

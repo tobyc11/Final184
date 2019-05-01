@@ -43,6 +43,7 @@ void CStatcMeshVertexShader::Compile()
 {
 #define CACHE_KEY "StatcMeshVertexShader"
     CShaderCompileEnvironment env;
+    env.ShaderStage = "vertex";
     env.MainSourcePath = CResourceManager::Get().FindShader("StaticMeshVS.glsl");
     env.MainSourcePath = tc::FPathTools::FixSlashes(env.MainSourcePath);
     env.IncludeDirs.emplace_back(tc::FPathTools::StripFilename(env.MainSourcePath));

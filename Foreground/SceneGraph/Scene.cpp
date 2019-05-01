@@ -15,6 +15,15 @@ CSceneNode* CScene::GetRootNode() const { return RootNode.get(); }
 
 COctree* CScene::GetAccelStructure() const { return AccelStructure.get(); }
 
+static void UpdateAccelStructureDFS(CSceneNode* scnNode)
+{
+    scnNode->UpdateAccelStructure();
+    for (CSceneNode* childNode : scnNode->GetChildren())
+        UpdateAccelStructureDFS(childNode);
+}
+
+void CScene::UpdateAccelStructure() const { UpdateAccelStructureDFS(GetRootNode()); }
+
 static void InspectorDFSNode(CSceneNode* scnNode)
 {
     if (ImGui::TreeNode(scnNode->GetName().c_str()))

@@ -51,6 +51,7 @@
 
 #include <ForegroundBootstrapper.h>
 #include <Renderer/DeferredConductor.h>
+#include <Renderer/MegaPipeline.h>
 #include <Renderer/RenderConductor.h>
 
 using namespace Foreground;
@@ -178,6 +179,8 @@ int main(int argc, char* argv[])
 #endif
     auto swapChain = device->CreateSwapChain(surfaceDesc, EFormat::R8G8B8A8_UNORM);
 
+    CForegroundBootstrapper::Init(device);
+
     // Setup ImGui
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -188,9 +191,18 @@ int main(int argc, char* argv[])
 
     // Load model
     std::shared_ptr<CScene> scene = std::make_shared<CScene>();
+    auto* cameraNode = scene->GetRootNode()->CreateChildNode();
+    cameraNode->SetName("CameraNode");
+    cameraNode->SetCamera(std::make_shared<CCamera>());
 
     CglTFSceneImporter importer(scene, *device);
     importer.ImportFile(CResourceManager::Get().FindFile("Models/Sponza.gltf"));
+
+    auto renderPipeline =
+        CForegroundBootstrapper::CreateRenderPipeline(swapChain, EForegroundPipeline::Mega);
+    renderPipeline->SetSceneView(std::make_unique<CSceneView>(cameraNode));
+
+    scene->UpdateAccelStructure();
 
     // Start render loop
     std::thread physicsThread(game_logic);
@@ -278,11 +290,13 @@ int main(int argc, char* argv[])
         ImGui::End();
 
         scene->ShowInspectorImGui();*/
+        renderPipeline->Render();
     }
 
     physicsThread.join();
 
     // Sync & exit
+    CForegroundBootstrapper::Shutdown();
     SDL_DestroyWindow(window);
     SDL_Quit();
     CResourceManager::Get().Shutdown();

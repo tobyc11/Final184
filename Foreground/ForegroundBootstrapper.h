@@ -24,7 +24,7 @@ public:
                          EForegroundPipeline kind);
 
     // Create a render pipeline with an existing swap chain
-    static std::shared_ptr<CMegaPipeline> CreateRenderPipeline(const RHI::CSwapChain& swapChain,
+    static std::shared_ptr<CMegaPipeline> CreateRenderPipeline(RHI::CSwapChain::Ref swapChain,
                                                                EForegroundPipeline kind);
 };
 

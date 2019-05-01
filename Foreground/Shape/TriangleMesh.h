@@ -43,8 +43,9 @@ public:
             auto iter = Attributes.find(pair.first);
             if (iter == Attributes.end())
                 printf("Warning: required attribute not found in mesh.");
-            desc.VertexAttribFormat(pair.second, iter->second.Format, iter->second.Offset,
-                                    iter->second.BindingIndex);
+            else
+                desc.VertexAttribFormat(pair.second, iter->second.Format, iter->second.Offset,
+                                        iter->second.BindingIndex);
         }
         for (uint32_t i = 0; i < static_cast<uint32_t>(BufferBindings.size()); i++)
             if (BufferBindings[i].Buffer)

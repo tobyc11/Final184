@@ -10,10 +10,11 @@ class CScene
 public:
     CScene();
 
-	CSceneNode* GetRootNode() const;
-	COctree* GetAccelStructure() const;
+    CSceneNode* GetRootNode() const;
+    COctree* GetAccelStructure() const;
+    void UpdateAccelStructure() const;
 
-	void ShowInspectorImGui();
+    void ShowInspectorImGui();
 
 private:
     std::unique_ptr<CSceneNode> RootNode;

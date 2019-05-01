@@ -25,7 +25,7 @@ void CSceneView::PrepareToRender()
     auto frustum = camera->GetFrustum().Transformed(CameraNode->GetWorldTransform());
     std::list<CSceneNode*> frustumCull;
     sceneAccel->Intersect(frustum, frustumCull);
-    VisibleNodeList.resize(frustumCull.size());
+    VisibleNodeList.reserve(frustumCull.size());
     VisibleNodeList.insert(VisibleNodeList.begin(), frustumCull.begin(), frustumCull.end());
 
     for (CSceneNode* node : VisibleNodeList)

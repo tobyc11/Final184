@@ -10,6 +10,7 @@ namespace Foreground
 struct CShaderCompileEnvironment
 {
     std::string MainSourcePath;
+    std::string ShaderStage;
     std::vector<std::string> IncludeDirs;
     std::map<std::string, std::string> Definitions;
     std::map<std::string, std::string> StrReplaces;

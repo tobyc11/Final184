@@ -23,6 +23,7 @@ protected:
             + TMaterialShader::GetHeaderName();
 
         CShaderCompileEnvironment env;
+        env.ShaderStage = "fragment";
         env.MainSourcePath = CResourceManager::Get().FindShader("GBufferPS.glsl");
         env.MainSourcePath = tc::FPathTools::FixSlashes(env.MainSourcePath);
         env.IncludeDirs.emplace_back(tc::FPathTools::StripFilename(env.MainSourcePath));

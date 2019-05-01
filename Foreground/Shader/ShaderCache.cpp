@@ -34,6 +34,7 @@ RHI::CShaderModule::Ref CShaderCache::RetrieveOrCompileShader(const std::string&
 
     std::lock_guard<std::mutex> lk(ShaderCacheMutex);
     CShaderCompileWorker worker(std::move(env));
+    worker.SetOutputPath(key + ".spv");
     auto shader = worker.Compile();
     ShaderHashMap[key] = shader;
     return shader;

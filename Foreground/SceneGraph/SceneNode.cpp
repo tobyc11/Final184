@@ -272,6 +272,13 @@ tc::BoundingBox CSceneNode::GetWorldBoundingBox() const
     return GetBoundingBox().Transformed(GetWorldTransform());
 }
 
+void CSceneNode::UpdateAccelStructure() const
+{
+    if (bBoundingBoxDirty || bLocalToWorldDirty || bAccelStructureDirty)
+        Scene->GetAccelStructure()->UpdateObject(const_cast<CSceneNode*>(this));
+    bAccelStructureDirty = false;
+}
+
 void CSceneNode::MarkLocalToWorldDirty(bool recursive)
 {
     bLocalToWorldDirty = true;
