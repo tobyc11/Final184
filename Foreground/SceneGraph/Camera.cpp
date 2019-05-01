@@ -95,7 +95,8 @@ tc::Matrix4 CCamera::CalcPerspective() const
     float c = (FarClip + NearClip) / (NearClip - FarClip);
     float d = -2 * FarClip * NearClip / (FarClip - NearClip);
 
-    return tc::Matrix4(a, 0, 0, 0, 0, b, 0, 0, 0, 0, c, d, 0, 0, -1, 0);
+    // Negate b since Vulkan uses a flipped NDC
+    return tc::Matrix4(a, 0, 0, 0, 0, -b, 0, 0, 0, 0, c, d, 0, 0, -1, 0);
 }
 
 tc::Matrix4 CCamera::CalcOrtho() const { return tc::Matrix4(); }

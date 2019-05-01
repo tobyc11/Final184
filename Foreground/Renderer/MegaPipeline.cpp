@@ -45,6 +45,7 @@ CMegaPipeline::CMegaPipeline(RHI::CSwapChain::Ref swapChain)
         RHI::CPipelineDesc desc;
         desc.VS = LoadSPIRV(RenderDevice, "Quad.vert.spv");
         desc.PS = LoadSPIRV(RenderDevice, "Blit.frag.spv");
+        desc.RasterizerState.CullMode = RHI::ECullModeFlags::None;
         desc.DepthStencilState.DepthEnable = false;
         desc.RenderPass = ScreenPass;
         desc.Subpass = 0;
@@ -77,11 +78,11 @@ void CMegaPipeline::Render()
     ctx->EndRenderPass();
 
     ctx->BeginRenderPass(*ScreenPass, { RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f) });
-    //ctx->BindPipeline(*BlitPipeline);
-    //ctx->BindSampler(*GlobalNiceSampler, 0, 0, 0);
-    //ctx->BindImageView(*GBuffer0, 0, 1, 0);
-    //ctx->BindImageView(*GBufferDepth, 0, 2, 0);
-    //ctx->Draw(3, 1, 0, 0);
+    ctx->BindPipeline(*BlitPipeline);
+    ctx->BindSampler(*GlobalLinearSampler, 0, 0, 0);
+    ctx->BindImageView(*GBuffer1, 0, 1, 0);
+    ctx->BindImageView(*GBufferDepth, 0, 2, 0);
+    ctx->Draw(3, 1, 0, 0);
 
     auto* drawData = ImGui::GetDrawData();
     if (drawData)
