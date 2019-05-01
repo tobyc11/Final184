@@ -10,6 +10,7 @@ file(GLOB RENDER_SOURCES
     SceneGraph/*.h SceneGraph/*.cpp
     Shader/*.h Shader/*.cpp
     Shape/*.h Shape/*.cpp
+    Components/*.h Components/*.cpp
 )
 
 add_library(${MODULE_NAME} ${RENDER_SOURCES})
