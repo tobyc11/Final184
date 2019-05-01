@@ -14,6 +14,7 @@ struct GlobalConstants
     tc::Vector4 CameraPos;
     tc::Matrix4 ViewMat;
     tc::Matrix4 ProjMat;
+    tc::Matrix4 InvProj;
 };
 
 class CMegaPipeline

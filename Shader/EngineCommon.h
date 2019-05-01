@@ -9,4 +9,5 @@ layout (set=0, binding=3) uniform GlobalConstants
     vec4 CameraPos;
     mat4 ViewMat;
     mat4 ProjMat;
+    mat4 InvProj;
 };

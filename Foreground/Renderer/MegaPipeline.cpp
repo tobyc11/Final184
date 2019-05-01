@@ -105,6 +105,7 @@ void CMegaPipeline::BindEngineCommon(RHI::IRenderContext& context)
     constants.ViewMat =
         SceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4().Transpose();
     constants.ProjMat = SceneView->GetCameraNode()->GetCamera()->GetMatrix().Transpose();
+    constants.InvProj = SceneView->GetCameraNode()->GetCamera()->GetMatrix().Inverse().Transpose();
     context.BindConstants(&constants, sizeof(GlobalConstants), 0, 3, 0);
 }
 
