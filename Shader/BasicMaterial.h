@@ -24,6 +24,7 @@ float Material_GetMetallic()
 {
     if (!UseTextures)
         return MetallicRoughness.g;
+    vec2 uv = Interpolants_GetTexCoord0();
     return texture(sampler2D(MetallicRoughnessTex, GlobalLinearSampler), uv).g * MetallicRoughness.g;
 }
 
@@ -31,5 +32,6 @@ float Material_GetRoughness()
 {
     if (!UseTextures)
         return MetallicRoughness.b;
+    vec2 uv = Interpolants_GetTexCoord0();
     return texture(sampler2D(MetallicRoughnessTex, GlobalLinearSampler), uv).b * MetallicRoughness.g;
 }
