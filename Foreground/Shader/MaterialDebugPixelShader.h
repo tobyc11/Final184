@@ -1,6 +1,7 @@
 #pragma once
 #include "ShaderCache.h"
 #include <Pipeline.h>
+#include "Resources/ResourceManager.h"
 
 namespace Foreground
 {
@@ -27,7 +28,7 @@ protected:
         env.IncludeDirs.emplace_back(tc::FPathTools::StripFilename(env.MainSourcePath));
         env.StrReplaces["{{VSInterpolantsHeader}}"] = TVertexShader::GetInterpolantsHeader();
         env.StrReplaces["{{MaterialHeader}}"] = TMaterialShader::GetHeaderName();
-        CompiledShaderModule = CShaderCache::Get().RetrieveOrCompileShader(key, std::move(env));
+        ShaderModule = CShaderCache::Get().RetrieveOrCompileShader(key, std::move(env));
     }
 
 private:
