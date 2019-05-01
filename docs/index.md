@@ -4,17 +4,18 @@ Toby Chen, Bob Cao, Gui Andrade
 
 ## Project Architecture & expectations
 
-![](https://media.discordapp.net/attachments/561306007385669655/573028789488058368/Final184Architecture.png?width=400&height=267)
+![](Final184Architecture.png)
 
 (TODO: Replace the link with a permanent one)
 
 ## Implemented components
 
-- Vulkan rendering pipeline
+- Partial Vulkan rendering pipeline
 - Scene graph with model rendering
     - Implemented GLTF loading for easy importation of complex scenes
     - Using an [octree](https://en.wikipedia.org/wiki/Octree) as our internal data structure for high performance at scale
 - Horizon Based Ambient Occlusion (HBAO) shading
+    - Fast baseline algorithm for implementing ambient occlusion
 - Interactivity
     - Using SDL2 for window management and mouse/keyboard input
     - First-person camera point of view
@@ -27,8 +28,8 @@ The project is a bit behind the original timeline, but we think it is benefitial
 
 ## Next steps
 
-- Complete Megapipeline
-- Voxel LOD volumes generation
+- Complete "Megapipeline," a monolithic but extensible Vulkan rendering infrastructure
+- Generation and rendering of voxel LOD volumes
 - Shadow mapping (cascaded shadow mapping if possible)
-- Ground Truth Ambient Occlusion (GTAO) (adapt from existing HBAO code)
+- Ground Truth Ambient Occlusion (GTAO), adapted from existing HBAO code
 - Voxel marching
