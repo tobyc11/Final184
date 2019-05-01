@@ -276,7 +276,7 @@ int main(int argc, char* argv[])
         }
 
         // Draw GUI stuff
-        /*CRHIImGuiBackend::NewFrame();
+        CRHIImGuiBackend::NewFrame();
         ImGui_ImplSDL2_NewFrame(window);
         ImGui::NewFrame();
 
@@ -289,7 +289,9 @@ int main(int argc, char* argv[])
 
         ImGui::End();
 
-        scene->ShowInspectorImGui();*/
+        scene->ShowInspectorImGui();
+
+        ImGui::Render();
         renderPipeline->Render();
     }
 

@@ -7,6 +7,12 @@
 namespace Foreground
 {
 
+void CStatcMeshVertexShader::BindPerPrimitiveConstants(RHI::IRenderContext& context,
+                                                       PerPrimitiveConstants* data)
+{
+    context.BindConstants(data, sizeof(PerPrimitiveConstants), 2, 0, 0);
+}
+
 uint32_t CStatcMeshVertexShader::GetAttributeLocation(EAttributeType type) const
 {
     switch (type)

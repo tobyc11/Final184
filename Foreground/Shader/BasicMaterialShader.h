@@ -15,7 +15,7 @@ public:
     {
         tc::Vector4 BaseColor;
         tc::Vector4 MetallicRoughness;
-        bool UseTextures;
+        uint32_t UseTextures;
     };
 
     static void BindMaterialConstants(RHI::IRenderContext& context, MaterialConstants* data);

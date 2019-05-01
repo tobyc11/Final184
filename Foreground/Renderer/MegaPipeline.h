@@ -2,6 +2,7 @@
 #include "ForegroundCommon.h"
 #include "GBufferRenderer.h"
 #include "SceneGraph/SceneView.h"
+#include <Pipeline.h>
 #include <Resources.h>
 #include <Sampler.h>
 
@@ -38,8 +39,8 @@ private:
 
     RHI::CImageView::Ref GBuffer0;
     RHI::CImageView::Ref GBuffer1;
-    RHI::CImageView::Ref GBuffer2;
-    RHI::CImageView::Ref GBuffer3;
+    // RHI::CImageView::Ref GBuffer2;
+    // RHI::CImageView::Ref GBuffer3;
     RHI::CImageView::Ref GBufferDepth;
     RHI::CRenderPass::Ref GBufferPass;
 
@@ -49,8 +50,9 @@ private:
     RHI::CSampler::Ref GlobalNiceSampler;
     RHI::CSampler::Ref GlobalLinearSampler;
     RHI::CSampler::Ref GlobalNearestSampler;
+    RHI::CPipeline::Ref BlitPipeline;
 
-	CGBufferRenderer GBufferRenderer;
+    CGBufferRenderer GBufferRenderer;
 };
 
 } /* namespace Foreground */

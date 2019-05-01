@@ -1,8 +1,26 @@
 #include "MegaPipeline.h"
 #include "GBufferRenderer.h"
+#include "Resources/ResourceManager.h"
+#include <RHIImGuiBackend.h>
+#include <ShaderModule.h>
+#include <fstream>
+#include <imgui.h>
 
 namespace Foreground
 {
+
+static RHI::CShaderModule::Ref LoadSPIRV(RHI::CDevice::Ref device, const std::string& path)
+{
+    std::string filePath = CResourceManager::Get().FindShader(path);
+    std::ifstream file(filePath.c_str(), std::ios::binary | std::ios::ate);
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::vector<char> buffer(size);
+    if (file.read(buffer.data(), size))
+        return device->CreateShaderModule(buffer.size(), buffer.data());
+    return {};
+}
 
 CMegaPipeline::CMegaPipeline(RHI::CSwapChain::Ref swapChain)
     : SwapChain(swapChain)
@@ -20,6 +38,18 @@ CMegaPipeline::CMegaPipeline(RHI::CSwapChain::Ref swapChain)
 
     CreateRenderPasses();
     GBufferRenderer.SetRenderPass(GBufferPass);
+
+    RHI::CRHIImGuiBackend::Init(RenderDevice, ScreenPass);
+
+    {
+        RHI::CPipelineDesc desc;
+        desc.VS = LoadSPIRV(RenderDevice, "Quad.vert.spv");
+        desc.PS = LoadSPIRV(RenderDevice, "Blit.frag.spv");
+        desc.DepthStencilState.DepthEnable = false;
+        desc.RenderPass = ScreenPass;
+        desc.Subpass = 0;
+        BlitPipeline = RenderDevice->CreatePipeline(desc);
+    }
 }
 
 void CMegaPipeline::SetSceneView(std::unique_ptr<CSceneView> sceneView)
@@ -33,7 +63,10 @@ void CMegaPipeline::Render()
     if (!SceneView)
         return;
 
+    SwapChain->AcquireNextImage();
+
     // Does culling and stuff
+    SceneView->GetCameraNode()->GetScene()->UpdateAccelStructure();
     SceneView->PrepareToRender();
     auto ctx = RenderDevice->GetImmediateContext();
     ctx->BeginRenderPass(*GBufferPass,
@@ -42,7 +75,22 @@ void CMegaPipeline::Render()
     GBufferRenderer.RenderList(*ctx, SceneView->GetVisiblePrimModelMatrix(),
                                SceneView->GetVisiblePrimitiveList());
     ctx->EndRenderPass();
+
+    ctx->BeginRenderPass(*ScreenPass, { RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f) });
+    //ctx->BindPipeline(*BlitPipeline);
+    //ctx->BindSampler(*GlobalNiceSampler, 0, 0, 0);
+    //ctx->BindImageView(*GBuffer0, 0, 1, 0);
+    //ctx->BindImageView(*GBufferDepth, 0, 2, 0);
+    //ctx->Draw(3, 1, 0, 0);
+
+    auto* drawData = ImGui::GetDrawData();
+    if (drawData)
+        RHI::CRHIImGuiBackend::RenderDrawData(drawData, *ctx);
+    ctx->EndRenderPass();
     SceneView->FrameFinished();
+
+    RHI::CSwapChainPresentInfo info;
+    SwapChain->Present(info);
 }
 
 void CMegaPipeline::BindEngineCommon(RHI::IRenderContext& context)
@@ -53,8 +101,9 @@ void CMegaPipeline::BindEngineCommon(RHI::IRenderContext& context)
 
     GlobalConstants constants;
     constants.CameraPos = tc::Vector4(SceneView->GetCameraNode()->GetWorldPosition(), 1.0f);
-    constants.ViewMat = SceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4();
-    constants.ProjMat = SceneView->GetCameraNode()->GetCamera()->GetMatrix();
+    constants.ViewMat =
+        SceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4().Transpose();
+    constants.ProjMat = SceneView->GetCameraNode()->GetCamera()->GetMatrix().Transpose();
     context.BindConstants(&constants, sizeof(GlobalConstants), 0, 3, 0);
 }
 

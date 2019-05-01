@@ -39,9 +39,12 @@ static void InspectorDFSNode(CSceneNode* scnNode)
         auto t = scnNode->GetPosition();
         auto r = scnNode->GetRotation();
         auto s = scnNode->GetScale();
-        ImGui::DragFloat3("Translate", &t.x, 0.1f);
-        ImGui::DragFloat4("Rotate", &r.w, 0.1f);
-        ImGui::DragFloat3("Scale", &s.x, 0.1f);
+        if (ImGui::DragFloat3("Translate", &t.x, 0.1f))
+            scnNode->SetPosition(t);
+        if (ImGui::DragFloat4("Rotate", &r.w, 0.1f))
+            scnNode->SetRotation(r);
+        if (ImGui::DragFloat3("Scale", &s.x, 0.1f))
+            scnNode->SetScale(s);
 
         for (CSceneNode* childNode : scnNode->GetChildren())
             InspectorDFSNode(childNode);

@@ -219,6 +219,9 @@ public:
                     binding.Buffer = bufferView.first;
                     binding.Offset = bufferView.second;
                     binding.Stride = glTFModel.bufferViews[accessor.bufferView].byteStride;
+                    if (binding.Stride == 0)
+                        binding.Stride =
+                            accessor.ByteStride(glTFModel.bufferViews[accessor.bufferView]);
                     bufferBindingsByView[accessor.bufferView] = binding;
                 }
 
