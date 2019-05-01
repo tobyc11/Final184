@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject.h"
+#include "Event.h"
 
 #include <unordered_map>
 
@@ -11,6 +12,7 @@ namespace Foreground
     {
     public:
         std::unordered_map<std::shared_ptr<CEvent>, EventHandler*> handles;
+        handlerFunc_t* getTrigger(std::shared_ptr<CEvent> event) const;
     };
 
 }

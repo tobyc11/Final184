@@ -4,6 +4,8 @@
 
 #include <typeindex>
 
+#define VOID_TYPE std::type_index(typeid(void))
+
 namespace Foreground
 {
 
@@ -16,7 +18,7 @@ namespace Foreground
         
         handlerFunc_t* handle;
 
-        bool agreeWith(EventHandler& reference);
+        bool agreeWith(EventHandler* reference);
     };
 
     class CEvent : public CGameObject
@@ -25,7 +27,9 @@ namespace Foreground
         std::string name;
 
     public:
-        CEvent(std::string name);
+        EventHandler* referenceHandler;
+        
+        CEvent(std::string name, EventHandler* handlerType);
 
         std::string toString() const;
         size_t getInstanceID() const;
