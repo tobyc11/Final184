@@ -49,108 +49,13 @@
 #include <SceneGraph/Scene.h>
 #include <SceneGraph/glTFSceneImporter.h>
 
-#include <Renderer/RenderConductor.h>
+#include <ForegroundBootstrapper.h>
 #include <Renderer/DeferredConductor.h>
+#include <Renderer/RenderConductor.h>
 
 using namespace Foreground;
 
 using namespace RHI;
-
-// ============================================================================
-//  LoadSPIRV : Load compiled SPRIV shaders
-// ============================================================================
-static CShaderModule::Ref LoadSPIRV(CDevice::Ref device, const std::string& name)
-{
-    std::ifstream file(CResourceManager::Get().FindShader(name).c_str(),
-                       std::ios::binary | std::ios::ate);
-    std::streamsize size = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    std::vector<char> buffer(size);
-    if (file.read(buffer.data(), size))
-        return device->CreateShaderModule(buffer.size(), buffer.data());
-    return {};
-}
-
-// ============================================================================
-//  CreateScreenPass : Create Scene Render Pass
-// ============================================================================
-struct GBuffer
-{
-    CImageView::Ref albedoView;
-    CImageView::Ref normalsView;
-    CImageView::Ref depthView;
-};
-
-static CRenderPass::Ref CreateGBufferPass(CDevice::Ref device, CSwapChain::Ref swapChain,
-                                          GBuffer& gbuffer)
-{
-    /*auto fbImage = swapChain->GetImage();*/
-    uint32_t width, height;
-    swapChain->GetSize(width, height);
-
-    auto albedoImage = device->CreateImage2D(
-        EFormat::R8G8B8A8_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled, width,
-        height);
-    auto normalsImage = device->CreateImage2D(
-        EFormat::R8G8B8A8_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled, width,
-        height);
-    auto depthImage = device->CreateImage2D(
-        EFormat::D32_SFLOAT_S8_UINT, EImageUsageFlags::DepthStencil | EImageUsageFlags::Sampled,
-        width, height);
-
-    CImageViewDesc albedoViewDesc;
-    albedoViewDesc.Format = EFormat::R8G8B8A8_UNORM;
-    albedoViewDesc.Type = EImageViewType::View2D;
-    albedoViewDesc.Range.Set(0, 1, 0, 1);
-    auto albedoView = device->CreateImageView(albedoViewDesc, albedoImage);
-    gbuffer.albedoView = albedoView;
-
-    CImageViewDesc normalsViewDesc;
-    normalsViewDesc.Format = EFormat::R8G8B8A8_UNORM;
-    normalsViewDesc.Type = EImageViewType::View2D;
-    normalsViewDesc.Range.Set(0, 1, 0, 1);
-    auto normalsView = device->CreateImageView(normalsViewDesc, normalsImage);
-    gbuffer.normalsView = normalsView;
-
-    CImageViewDesc depthViewDesc;
-    depthViewDesc.Format = EFormat::D32_SFLOAT_S8_UINT;
-    depthViewDesc.Type = EImageViewType::View2D;
-    depthViewDesc.DepthStencilAspect = EDepthStencilAspectFlags::Depth;
-    depthViewDesc.Range.Set(0, 1, 0, 1);
-    auto depthView = device->CreateImageView(depthViewDesc, depthImage);
-    gbuffer.depthView = depthView;
-
-    CRenderPassDesc rpDesc;
-    rpDesc.AddAttachment(albedoView, EAttachmentLoadOp::Clear, EAttachmentStoreOp::Store);
-    rpDesc.AddAttachment(normalsView, EAttachmentLoadOp::Clear, EAttachmentStoreOp::Store);
-    rpDesc.AddAttachment(depthView, EAttachmentLoadOp::Clear, EAttachmentStoreOp::Store);
-    rpDesc.NextSubpass().AddColorAttachment(0).AddColorAttachment(1).SetDepthStencilAttachment(2);
-    swapChain->GetSize(rpDesc.Width, rpDesc.Height);
-    rpDesc.Layers = 1;
-    return device->CreateRenderPass(rpDesc);
-}
-
-static CRenderPass::Ref CreateScreenPass(CDevice::Ref device, CSwapChain::Ref swapChain)
-{
-    auto fbImage = swapChain->GetImage();
-    uint32_t width, height;
-    swapChain->GetSize(width, height);
-
-    CImageViewDesc fbViewDesc;
-    fbViewDesc.Format = EFormat::R8G8B8A8_UNORM;
-    fbViewDesc.Type = EImageViewType::View2D;
-    fbViewDesc.Range.Set(0, 1, 0, 1);
-    auto fbView = device->CreateImageView(fbViewDesc, fbImage);
-
-    CRenderPassDesc rpDesc;
-    rpDesc.AddAttachment(fbView, EAttachmentLoadOp::Clear, EAttachmentStoreOp::Store);
-    rpDesc.Subpasses.resize(1);
-    rpDesc.Subpasses[0].AddColorAttachment(0);
-    swapChain->GetSize(rpDesc.Width, rpDesc.Height);
-    rpDesc.Layers = 1;
-    return device->CreateRenderPass(rpDesc);
-}
 
 // ============================================================================
 //  Physics & game logic thread
@@ -164,16 +69,19 @@ const double tickInterval = 1.0 / (double)tickRate;
 
 using namespace std::chrono_literals;
 
-class Control {
+class Control
+{
 public:
-    enum class Sticky {
+    enum class Sticky
+    {
         MoveLeft = 0,
         MoveRight,
         MoveForward,
         MoveBack,
         MAX_VAL
     };
-    enum class Analog {
+    enum class Analog
+    {
         CameraPitch = 0, // Up/down
         CameraYaw, // Left/right
         MAX_VAL
@@ -184,23 +92,13 @@ private:
     float analog_states[(size_t)Analog::MAX_VAL] = {};
 
 public:
-    void setSticky(Sticky which, bool active) {
-        sticky_states[(size_t)which] = active;
-    }
-    bool getSticky(Sticky which) {
-        return sticky_states[(size_t)which];
-    }
+    void setSticky(Sticky which, bool active) { sticky_states[(size_t)which] = active; }
+    bool getSticky(Sticky which) { return sticky_states[(size_t)which]; }
 
-    void setAnalog(Analog which, float val) {
-        analog_states[(size_t)which] = val;
-    }
+    void setAnalog(Analog which, float val) { analog_states[(size_t)which] = val; }
 
-    int xAxis() {
-        return getSticky(Sticky::MoveLeft) - getSticky(Sticky::MoveRight);
-    }
-    int yAxis() {
-        return getSticky(Sticky::MoveForward) - getSticky(Sticky::MoveBack);
-    }
+    int xAxis() { return getSticky(Sticky::MoveLeft) - getSticky(Sticky::MoveRight); }
+    int yAxis() { return getSticky(Sticky::MoveForward) - getSticky(Sticky::MoveBack); }
 };
 
 void game_logic()
@@ -225,7 +123,6 @@ void game_logic()
             lastIntervalTicks = ticksElapsed;
             tickRateLastUpdated = elapsedTime;
         }
-
 
         ticksElapsed++;
 
@@ -281,11 +178,6 @@ int main(int argc, char* argv[])
 #endif
     auto swapChain = device->CreateSwapChain(surfaceDesc, EFormat::R8G8B8A8_UNORM);
 
-    GBuffer gbuffer;
-
-    auto gbufferPass = CreateGBufferPass(device, swapChain, gbuffer);
-    auto screenPass = CreateScreenPass(device, swapChain);
-
     // Setup ImGui
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -293,7 +185,6 @@ int main(int argc, char* argv[])
     ImGui::StyleColorsDark();
 
     ImGui_ImplSDL2_InitForVulkan(window);
-    CRHIImGuiBackend::Init(device, screenPass);
 
     // Load model
     std::shared_ptr<CScene> scene = std::make_shared<CScene>();
@@ -302,13 +193,8 @@ int main(int argc, char* argv[])
     importer.ImportFile(CResourceManager::Get().FindFile("Models/Sponza.gltf"));
 
     // Start render loop
-    auto ctx = device->GetImmediateContext();
-
     std::thread physicsThread(game_logic);
     Control control;
-
-    // Setup Render Conductor
-    DeferredConductor conductor(ctx, device, swapChain);
 
     while (!terminated)
     {
@@ -317,7 +203,8 @@ int main(int argc, char* argv[])
         {
             ImGui_ImplSDL2_ProcessEvent(&event);
 
-            switch (event.type) {
+            switch (event.type)
+            {
             case SDL_QUIT:
                 terminated = true;
                 break;
@@ -325,9 +212,6 @@ int main(int argc, char* argv[])
             case SDL_WINDOWEVENT_RESIZED:
             {
                 swapChain->Resize(UINT32_MAX, UINT32_MAX);
-                uint32_t width, height;
-                swapChain->GetSize(width, height);
-                screenPass->Resize(width, height);
                 break;
             }
             case SDL_KEYDOWN:
@@ -339,15 +223,20 @@ int main(int argc, char* argv[])
                 Control::Sticky which_input;
                 bool input_valid = !event.key.repeat;
 
-                switch (key.scancode) {
+                switch (key.scancode)
+                {
                 case SDL_SCANCODE_W:
-                    which_input = Control::Sticky::MoveForward; break;
+                    which_input = Control::Sticky::MoveForward;
+                    break;
                 case SDL_SCANCODE_A:
-                    which_input = Control::Sticky::MoveLeft; break;
+                    which_input = Control::Sticky::MoveLeft;
+                    break;
                 case SDL_SCANCODE_S:
-                    which_input = Control::Sticky::MoveBack; break;
+                    which_input = Control::Sticky::MoveBack;
+                    break;
                 case SDL_SCANCODE_D:
-                    which_input = Control::Sticky::MoveRight; break;
+                    which_input = Control::Sticky::MoveRight;
+                    break;
                 case SDL_SCANCODE_ESCAPE:
                     SDL_SetRelativeMouseMode(SDL_FALSE);
                     break;
@@ -355,10 +244,12 @@ int main(int argc, char* argv[])
                     SDL_SetRelativeMouseMode(SDL_TRUE);
                     break;
                 default:
-                    input_valid = false; break;
+                    input_valid = false;
+                    break;
                 }
 
-                if (!input_valid) break;
+                if (!input_valid)
+                    break;
 
                 control.setSticky(which_input, state == SDL_PRESSED);
                 break;
@@ -387,32 +278,11 @@ int main(int argc, char* argv[])
         ImGui::End();
 
         scene->ShowInspectorImGui();*/
-
-        // swapchain stuff
-        bool swapOk = swapChain->AcquireNextImage();
-        if (!swapOk)
-        {
-            swapChain->AutoResize();
-            uint32_t width, height;
-            swapChain->GetSize(width, height);
-            screenPass->Resize(width, height);
-            swapChain->AcquireNextImage();
-        }
-
-        // Record render pass
-        conductor.ProcessAndSubmit();
-
-        // Present
-        CSwapChainPresentInfo info;
-        info.SrcImage = nullptr;
-        swapChain->Present(info);
     }
 
     physicsThread.join();
 
     // Sync & exit
-    ctx->Flush(true);
-    CRHIImGuiBackend::Shutdown();
     SDL_DestroyWindow(window);
     SDL_Quit();
     CResourceManager::Get().Shutdown();

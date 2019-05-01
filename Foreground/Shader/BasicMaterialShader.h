@@ -1,7 +1,7 @@
 #pragma once
 #include <Pipeline.h>
 #include <RenderContext.h>
-#include <glm/glm.hpp>
+#include <Vector4.h>
 
 namespace Foreground
 {

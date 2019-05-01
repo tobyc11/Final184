@@ -46,7 +46,7 @@ public:
             desc.VertexAttribFormat(pair.second, iter->second.Format, iter->second.Offset,
                                     iter->second.BindingIndex);
         }
-        for (size_t i = 0; i < BufferBindings.size(); i++)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(BufferBindings.size()); i++)
             if (BufferBindings[i].Buffer)
             {
                 desc.VertexBinding(i, BufferBindings[i].Stride);
@@ -71,7 +71,7 @@ public:
 
     void Draw(RHI::IRenderContext& context) const
     {
-        for (size_t i = 0; i < BufferBindings.size(); i++)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(BufferBindings.size()); i++)
             if (BufferBindings[i].Buffer)
             {
                 context.BindVertexBuffer(i, *BufferBindings[i].Buffer, BufferBindings[i].Offset);
