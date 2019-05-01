@@ -1,21 +1,11 @@
 #pragma once
+#include "Shader/VertexShaderCommon.h"
+#include <BoundingBox.h>
 #include <Format.h>
 #include <ShaderModule.h>
 
 namespace Foreground
 {
-
-enum class EAttributeType
-{
-    Position,
-    Normal,
-    Tangent,
-    TexCoord0,
-    TexCoord1,
-    Color0,
-    Joints0,
-    Weights0
-};
 
 struct CBufferBinding
 {
@@ -56,6 +46,9 @@ public:
     RHI::EPrimitiveTopology GetPrimitiveTopology() const { return PrimTopology; }
     void SetPrimitiveTopology(RHI::EPrimitiveTopology t) { PrimTopology = t; }
 
+    const tc::BoundingBox& GetBoundingBox() const { return BoundingBox; }
+    void SetBoundingBox(tc::BoundingBox bb) { BoundingBox = std::move(bb); }
+
 private:
     std::array<CBufferBinding, 16> BufferBindings;
     std::map<EAttributeType, CVertexAttribute> Attributes;
@@ -67,6 +60,7 @@ private:
     uint32_t ElementCount;
 
     RHI::EPrimitiveTopology PrimTopology;
+    tc::BoundingBox BoundingBox;
 };
 
 } /* namespace Foreground */

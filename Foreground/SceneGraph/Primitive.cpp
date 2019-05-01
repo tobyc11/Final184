@@ -3,7 +3,7 @@
 namespace Foreground
 {
 
-tc::BoundingBox CPrimitive::GetBoundingBox() const { return tc::BoundingBox(); }
+tc::BoundingBox CPrimitive::GetBoundingBox() const { return Shape->GetBoundingBox(); }
 
 std::shared_ptr<CBasicMaterial> CPrimitive::GetMaterial() const { return Material; }
 

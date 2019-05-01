@@ -292,7 +292,9 @@ int main(int argc, char* argv[])
         ImGui::Text("Physics tick rate: %f", physicsTickRate);
         ImGui::Text("Elapsed time: %f", elapsedTime);
 
-        ImGui::End();*/
+        ImGui::End();
+
+        scene->ShowInspectorImGui();*/
 
         // swapchain stuff
         bool swapOk = swapChain->AcquireNextImage();
@@ -302,7 +304,6 @@ int main(int argc, char* argv[])
             uint32_t width, height;
             swapChain->GetSize(width, height);
             screenPass->Resize(width, height);
-            gbufferPass->Resize(width, height);
             swapChain->AcquireNextImage();
         }
 

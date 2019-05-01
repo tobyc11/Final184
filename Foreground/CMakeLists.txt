@@ -3,6 +3,7 @@
 set(CMAKE_CXX_STANDARD 17)
 
 file(GLOB RENDER_SOURCES
+	*.h *.cpp
     Material/*.h Material/*.cpp
     Renderer/*.h Renderer/*.cpp
     Resources/*.h Resources/*.cpp

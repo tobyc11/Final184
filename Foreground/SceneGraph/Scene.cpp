@@ -20,7 +20,19 @@ static void InspectorDFSNode(CSceneNode* scnNode)
     if (ImGui::TreeNode(scnNode->GetName().c_str()))
     {
         if (!scnNode->GetPrimitives().empty())
+        {
             ImGui::Text("Primitives: %lu", scnNode->GetPrimitives().size());
+            ImGui::Text("World bounds:");
+            auto bb = scnNode->GetWorldBoundingBox();
+            ImGui::DragFloat3("Min", &bb.Min.x);
+            ImGui::DragFloat3("Max", &bb.Max.x);
+        }
+        auto t = scnNode->GetPosition();
+        auto r = scnNode->GetRotation();
+        auto s = scnNode->GetScale();
+        ImGui::DragFloat3("Translate", &t.x, 0.1f);
+        ImGui::DragFloat4("Rotate", &r.w, 0.1f);
+        ImGui::DragFloat3("Scale", &s.x, 0.1f);
 
         for (CSceneNode* childNode : scnNode->GetChildren())
             InspectorDFSNode(childNode);

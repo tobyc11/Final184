@@ -249,6 +249,16 @@ public:
                 attributes.emplace(attrType, attribute);
 
                 triMesh->SetElementCount(accessor.count);
+
+                // Bounding box info also comes from position attribute
+                if (attrType == EAttributeType::Position)
+                {
+                    tc::Vector3 min(accessor.minValues[0], accessor.minValues[1],
+                                    accessor.minValues[2]);
+                    tc::Vector3 max(accessor.maxValues[0], accessor.maxValues[1],
+                                    accessor.maxValues[2]);
+                    triMesh->SetBoundingBox(tc::BoundingBox(min, max));
+                }
             }
             uint32_t index = 0;
             std::vector<CBufferBinding> bufferBindings;
@@ -338,7 +348,7 @@ public:
                 node->AddPrimitive(std::move(prim));
         }
 
-		for (auto childIndex : n.children)
+        for (auto childIndex : n.children)
             Visit(node, childIndex);
     }
 
