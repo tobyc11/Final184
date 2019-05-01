@@ -1,25 +1,15 @@
 #version 450 core
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(location = 0) in VertexData {
-    vec2 uv;
-};
+layout(location = 0) in vec2 inUV;
 
 layout(location = 0) out vec4 outColor;
 
-layout(set = 0, binding = 0) uniform sampler s;
-layout(set = 0, binding = 1) uniform texture2D t_albedo;
-layout(set = 0, binding = 2) uniform texture2D t_normals;
-layout(set = 0, binding = 3) uniform texture2D t_depth;
+#include "EngineCommon.h"
 
-layout(set = 1, binding = 0) uniform UBO {
-	vec4 uniformColor;
-    mat4 projection;
-    mat4 modelview;
-    mat4 projectionInverse;
-    float near;
-    float far;
-};
+layout(set = 1, binding = 0) uniform sampler s;
+layout(set = 1, binding = 1) uniform texture2D t_normals;
+layout(set = 1, binding = 2) uniform texture2D t_depth;
 
 float getDepth(vec2 uv) {
     return texture(sampler2D(t_depth, s), uv).r;
@@ -28,7 +18,7 @@ float getDepth(vec2 uv) {
 vec3 getCSpos(vec2 uv) {
     float depth = getDepth(uv);
     vec4 pos = vec4(uv * 2.0 - 1.0, depth, 1.0);
-    pos = projectionInverse * pos;
+    pos = InvProj * pos;
     return pos.xyz / pos.w;
 }
 
@@ -78,7 +68,7 @@ float getAO(vec2 uv) {
 void main() {
     vec3 ao = vec3(0.0);
 
-    ao = vec3(getAO(uv));
+    ao = vec3(getAO(inUV));
 
     outColor = vec4(ao, 1.0);
 }
