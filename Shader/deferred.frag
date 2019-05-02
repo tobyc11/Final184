@@ -63,10 +63,12 @@ float getAO(vec2 uv) {
     float d = rand(uv) * 0.5 + 0.5;
     
     for (int i = 0; i < samplesCount; i++) {
-
         vec2 offset = poisson_12[i] * d * adjRadius;
+        vec2 suv = uv + offset;
 
-        vec3 spos = getCSpos(uv + offset);
+        if (clamp(suv, vec2(0.0), vec2(1.0)) != suv) continue;
+
+        vec3 spos = getCSpos(suv);
 
         vec3 diff = spos - cpos;
         float dist = length(diff);
@@ -88,5 +90,5 @@ void main() {
 
     vec3 albedo = texture(sampler2D(t_albedo, s), inUV).rgb;
 
-    outColor = vec4(ao, 1.0);
+    outColor = vec4(albedo * ao, 1.0);
 }
