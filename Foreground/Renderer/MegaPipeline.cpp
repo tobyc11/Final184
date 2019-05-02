@@ -32,6 +32,9 @@ namespace Foreground
         desc.MinFilter = RHI::EFilter::Nearest;
         desc.MagFilter = RHI::EFilter::Nearest;
         desc.MipmapMode = RHI::ESamplerMipmapMode::Nearest;
+        desc.AddressModeU = RHI::ESamplerAddressMode::Wrap;
+        desc.AddressModeV = RHI::ESamplerAddressMode::Wrap;
+        desc.AddressModeW = RHI::ESamplerAddressMode::Wrap;
         GlobalNearestSampler = RenderDevice->CreateSampler(desc);
         desc.AnisotropyEnable = true;
         desc.MaxAnisotropy = 16.0f;
