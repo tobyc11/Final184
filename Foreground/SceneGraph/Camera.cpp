@@ -83,7 +83,7 @@ tc::Matrix4 CCamera::CalcInfPerspective() const { return tc::Matrix4(); }
 tc::Matrix4 CCamera::CalcPerspective() const
 {
     float rad_fovy = FovY / 180.f * tc::M_PI;
-    float y_slope = tan(rad_fovy);
+    float y_slope = tan(rad_fovy / 2);
     float x_slope = y_slope * AspectRatio;
     // aspect ratio = w / h   =>   w = aspect ratio * h
 

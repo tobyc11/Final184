@@ -170,12 +170,38 @@ void CSceneNode::SetWorldTransform(const tc::Vector3& position, const tc::Quater
 
 void CSceneNode::Translate(const tc::Vector3& delta, ETransformSpace space)
 {
-    throw "unimplemented";
+    switch (space) {
+    case ETransformSpace::Local: {
+        auto pos = GetPosition();
+        SetPosition(pos + delta);
+        break;
+    }
+    case ETransformSpace::World: {
+        auto pos = GetWorldPosition();
+        SetWorldPosition(pos + delta);
+        break;
+    }
+    default:
+        throw "unimplemented";
+    }
 }
 
 void CSceneNode::Rotate(const tc::Quaternion& delta, ETransformSpace space)
 {
-    throw "unimplemented";
+    switch (space) {
+        case ETransformSpace::Local: {
+            auto pos = GetRotation();
+            SetRotation(delta * pos);
+            break;
+        }
+        case ETransformSpace::World: {
+            auto pos = GetWorldRotation();
+            SetWorldRotation(delta * pos);
+            break;
+        }
+        default:
+            throw "unimplemented";
+    }
 }
 
 void CSceneNode::RotateAround(const tc::Vector3& point, const tc::Quaternion& delta,

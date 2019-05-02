@@ -51,6 +51,48 @@ using namespace RHI;
 // Global structures
 // ----------------------------------------------------------------------------
 
+class Control {
+public:
+    enum class Sticky {
+        MoveLeft = 0,
+        MoveRight,
+        MoveForward,
+        MoveBack,
+        MAX_VAL
+    };
+    enum class Analog {
+        CameraPitch = 0, // Up/down
+        CameraYaw, // Left/right
+        MAX_VAL
+    };
+
+private:
+    std::atomic_bool sticky_states[(size_t)Sticky::MAX_VAL] = {};
+    std::atomic<float> analog_states[(size_t)Analog::MAX_VAL] = {};
+
+public:
+    void setSticky(Sticky which, bool active) {
+        sticky_states[(size_t)which] = active;
+    }
+    bool getSticky(Sticky which) const {
+        return sticky_states[(size_t)which];
+    }
+
+    void setAnalog(Analog which, float val) {
+        analog_states[(size_t)which] = val;
+    }
+    float getAnalog(Analog which) const {
+        return analog_states[(size_t)which];
+    }
+
+    int xAxis() const {
+        return getSticky(Sticky::MoveLeft) - getSticky(Sticky::MoveRight);
+    }
+    int yAxis() const {
+        return getSticky(Sticky::MoveForward) - getSticky(Sticky::MoveBack);
+    }
+};
+
 struct Game
 {
     SDL_Window* window;
@@ -67,4 +109,5 @@ struct Game
     std::shared_ptr<CEvent> event_logic_tick;
     std::shared_ptr<CEvent> event_render_tick;
     std::shared_ptr<CEvent> event_resize;
+    Control control;
 };

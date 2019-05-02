@@ -164,10 +164,16 @@ void game_logic(Game* game, std::shared_ptr<CBehaviour> main_behaviour)
 
     double physicsTickRate = 0.0;
     double elapsedTime = 0.0;
+    double prevTime = 0.0;
 
     auto timeStart = std::chrono::steady_clock::now();
-
     double tickRateLastUpdated = -1.0;
+
+//    Foreground::CCamera cam;
+//    cam.SetAspectRatio(16.0/9.0);
+//    glm::vec3 cameraPos(0, 10, -1);
+//    float lookYaw = 0;
+//    float lookPitch = 0;
 
     while (game->isRunning.load())
     {
@@ -239,6 +245,10 @@ int main(int argc, char* argv[])
 
     while (game.isRunning.load())
     {
+
+        game.control.setAnalog(Control::Analog::CameraYaw, 0);
+        game.control.setAnalog(Control::Analog::CameraPitch, 0);
+
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
@@ -261,6 +271,50 @@ int main(int argc, char* argv[])
                     resize(game, main_behaviour);
                 }
                 break;
+            case SDL_KEYDOWN:
+            case SDL_KEYUP:
+            {
+                SDL_Keysym key = event.key.keysym;
+                int state = event.key.state;
+
+                Control::Sticky which_input;
+                bool input_valid = !event.key.repeat;
+
+                switch (key.scancode) {
+                case SDL_SCANCODE_W:
+                    which_input = Control::Sticky::MoveForward; break;
+                case SDL_SCANCODE_A:
+                    which_input = Control::Sticky::MoveLeft; break;
+                case SDL_SCANCODE_S:
+                    which_input = Control::Sticky::MoveBack; break;
+                case SDL_SCANCODE_D:
+                    which_input = Control::Sticky::MoveRight; break;
+                case SDL_SCANCODE_ESCAPE:
+                    SDL_SetRelativeMouseMode(SDL_FALSE);
+                    input_valid = false;
+                    break;
+                case SDL_SCANCODE_RETURN:
+                    SDL_SetRelativeMouseMode(SDL_TRUE);
+                    input_valid = false;
+                    break;
+                default:
+                    input_valid = false;
+                    break;
+                }
+
+                if (!input_valid) break;
+
+                game.control.setSticky(which_input, state == SDL_PRESSED);
+                break;
+            }
+            case SDL_MOUSEMOTION:
+            {
+                uint32_t width, height;
+                game.swapChain->GetSize(width, height); 
+                game.control.setAnalog(Control::Analog::CameraYaw, (double)event.motion.xrel / width);
+                game.control.setAnalog(Control::Analog::CameraPitch, (double)event.motion.yrel / height);
+                break;
+            }
             }
         }
 
@@ -272,6 +326,8 @@ int main(int argc, char* argv[])
             typedef void (*event_init_function)(std::shared_ptr<CBehaviour>, Game*);
             reinterpret_cast<event_init_function>(handle)(main_behaviour, &game);
         }
+
+        game.device->WaitIdle();
     }
 
     // sync & exit
