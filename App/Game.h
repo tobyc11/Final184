@@ -61,7 +61,10 @@ struct Game
 
     CGameObject* root;
 
+    int windowWidth, windowHeight;
+
     std::shared_ptr<CEvent> event_init;
     std::shared_ptr<CEvent> event_logic_tick;
     std::shared_ptr<CEvent> event_render_tick;
+    std::shared_ptr<CEvent> event_resize;
 };

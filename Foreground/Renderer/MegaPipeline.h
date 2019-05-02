@@ -24,6 +24,7 @@ public:
 
     void SetSceneView(std::unique_ptr<CSceneView> sceneView);
 
+    void Resize();
     void Render();
 
     // Called by the renderers to set global constants

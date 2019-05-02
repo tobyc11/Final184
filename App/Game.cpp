@@ -44,6 +44,9 @@ int platformInit(std::vector<std::string> cmd_args, Game& game)
     SDL_VERSION(&wmInfo.version);
     SDL_GetWindowWMInfo(game.window, &wmInfo);
 
+    game.windowWidth = 640;
+    game.windowHeight = 480;
+
     // Bind presentation surface to window
 #if TC_OS == TC_OS_WINDOWS_NT
     game.surfaceDesc.Win32.Instance = wmInfo.info.win.hinstance;
@@ -90,6 +93,17 @@ void shutdown(Game& game)
     CResourceManager::Get().Shutdown();
 }
 
+// Resize
+void resize(Game& game, std::shared_ptr<CBehaviour> behaviour) {
+    handlerFunc_t* handle = behaviour->getTrigger(game.event_resize);
+    if (handle)
+    {
+        std::cout << "resize event" << std::endl;
+        typedef void (*event_init_function)(std::shared_ptr<CBehaviour>, Game*);
+        reinterpret_cast<event_init_function>(handle)(behaviour, &game);
+    }
+}
+
 // ----------------------------------------------------------------------------
 // Events & Behaviours setup
 // ----------------------------------------------------------------------------
@@ -123,6 +137,14 @@ std::shared_ptr<CGameObject> createRootEvents(Game& game)
     game.event_render_tick =
         std::shared_ptr<CEvent>(new CEvent("render_tick", event_render_tick_handle));
     root_events->addChild(game.event_render_tick);
+
+    EventHandler* event_resize_handle =
+        new EventHandler { VOID_TYPE,
+                           { std::type_index(typeid(std::shared_ptr<CBehaviour>)),
+                             std::type_index(typeid(Game*)) },
+                           NULL };
+    game.event_resize = std::shared_ptr<CEvent>(new CEvent("resize", event_resize_handle));
+    root_events->addChild(game.event_resize);
 
     return root_events;
 }
@@ -227,6 +249,17 @@ int main(int argc, char* argv[])
             case SDL_QUIT:
                 std::cout << "Exiting" << std::endl;
                 game.isRunning.store(false);
+                break;
+            case SDL_WINDOWEVENT:
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+                {
+                    game.device->WaitIdle();
+
+                    SDL_GetWindowSize(game.window, &game.windowWidth, &game.windowHeight);
+
+                    // Call resize events
+                    resize(game, main_behaviour);
+                }
                 break;
             }
         }

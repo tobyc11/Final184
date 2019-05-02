@@ -26,7 +26,9 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
     self->scene = std::make_shared<CScene>();
     self->cameraNode = self->scene->GetRootNode()->CreateChildNode();
     self->cameraNode->SetName("CameraNode");
-    self->cameraNode->SetCamera(std::make_shared<CCamera>());
+    self->camera = std::make_shared<CCamera>();
+    self->camera->SetAspectRatio((float)game->windowWidth / (float)game->windowHeight);
+    self->cameraNode->SetCamera(self->camera);
 
     CglTFSceneImporter importer(self->scene, *game->device);
     importer.ImportFile(CResourceManager::Get().FindFile("Models/Sponza.gltf"));
@@ -58,9 +60,23 @@ static void render_tick(std::shared_ptr<CBehaviour> selfref, Game* game)
     ImGui::NewFrame();
 
     self->scene->ShowInspectorImGui();
+    CGameObject::ShowInspectorImGui(game->root);
 
     ImGui::Render();
     self->renderPipeline->Render();
+}
+
+// ----------------------------------------------------------------------------
+// Event: resize (__root_events)
+// ----------------------------------------------------------------------------
+
+static void resize(std::shared_ptr<CBehaviour> selfref, Game* game)
+{
+    auto self = dynamic_pointer_cast<MainBehaviour>(selfref);
+    
+    self->renderPipeline->Resize();
+
+    self->camera->SetAspectRatio((float)game->windowWidth / (float)game->windowHeight);
 }
 
 // ----------------------------------------------------------------------------
@@ -106,4 +122,15 @@ MainBehaviour::MainBehaviour(CGameObject* root) {
         handles.insert_or_assign(ev, handle);
     }
     
+    ev = dynamic_pointer_cast<CEvent>(root->getFirstWithName("resize"));
+    if (ev)
+    {
+        EventHandler* handle =
+            new EventHandler { VOID_TYPE,
+                               { std::type_index(typeid(std::shared_ptr<CBehaviour>)),
+                                 std::type_index(typeid(Game*)) },
+                               (handlerFunc_t*)&resize };
+
+        handles.insert_or_assign(ev, handle);
+    }
 }

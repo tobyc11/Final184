@@ -19,6 +19,8 @@ public:
     bool hasChild(std::shared_ptr<CGameObject> obj) const;
     void addChild(std::shared_ptr<CGameObject> obj);
 
+    static void ShowInspectorImGui(CGameObject* node);
+
     std::shared_ptr<CGameObject> getFirstWithName(std::string name);
 };
 

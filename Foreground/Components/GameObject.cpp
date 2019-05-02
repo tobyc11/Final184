@@ -1,5 +1,7 @@
 #include "GameObject.h"
 
+#include <imgui.h>
+
 namespace Foreground
 {
 
@@ -34,6 +36,27 @@ std::shared_ptr<CGameObject> CGameObject::getFirstWithName(std::string name)
     }
 
     return nullptr;
+}
+
+static void InspectorDFSNode(CGameObject* node)
+{
+    if (ImGui::TreeNode(node->toString().c_str()))
+    {
+        for (auto child : node->children)
+            InspectorDFSNode(child.get());
+        ImGui::TreePop();
+    }
+}
+
+void CGameObject::ShowInspectorImGui(CGameObject* node)
+{
+    ImGui::Begin("Game Graph Inspector");
+    if (ImGui::CollapsingHeader("GameObject Tree"))
+    {
+        InspectorDFSNode(node);
+        ImGui::Separator();
+    }
+    ImGui::End();
 }
 
 CEmptyGameObject::CEmptyGameObject(std::string name) { this->name = name; }

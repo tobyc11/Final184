@@ -5,6 +5,7 @@
 #include <ShaderModule.h>
 #include <fstream>
 #include <imgui.h>
+#include <iostream>
 
 namespace Foreground
 {
@@ -58,13 +59,30 @@ namespace Foreground
         SceneView = std::move(sceneView);
     }
 
+    void CMegaPipeline::Resize() {
+        std::cout << "Resizing" << std::endl;
+
+        SwapChain->AutoResize();
+        uint32_t w, h;
+        SwapChain->GetSize(w, h);
+
+        GBufferPass = nullptr;
+        ScreenPass = nullptr;
+
+        CreateGBufferPass(w, h);
+        CreateScreenPass();
+    }
+
     void CMegaPipeline::Render()
     {
         // Or render some test image?
         if (!SceneView)
             return;
 
-        SwapChain->AcquireNextImage();
+        if (!SwapChain->AcquireNextImage())
+        {
+            return;
+        }
 
         // Does culling and stuff
         SceneView->GetCameraNode()->GetScene()->UpdateAccelStructure();
