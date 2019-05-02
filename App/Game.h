@@ -1,19 +1,5 @@
 #pragma once
 
-// Engine related stuff
-#include <Resources/ResourceManager.h>
-
-#include <PresentationSurfaceDesc.h>
-#include <RHIImGuiBackend.h>
-#include <RHIInstance.h>
-#include <SDL.h>
-#include <SDL_syswm.h>
-
-#include <Components/Behaviour.h>
-#include <Components/Event.h>
-#include <Components/GameObject.h>
-#include <ForegroundBootstrapper.h>
-
 // Platform support
 #include <Platform.h>
 
@@ -29,6 +15,20 @@
 #include <xcb/xcb.h>
 #undef None
 #endif
+
+// Engine related stuff
+#include <Resources/ResourceManager.h>
+
+#include <PresentationSurfaceDesc.h>
+#include <RHIImGuiBackend.h>
+#include <RHIInstance.h>
+#include <SDL.h>
+#include <SDL_syswm.h>
+
+#include <Components/Behaviour.h>
+#include <Components/Event.h>
+#include <Components/GameObject.h>
+#include <ForegroundBootstrapper.h>
 
 // imgui stuff
 #include "imgui.h"
