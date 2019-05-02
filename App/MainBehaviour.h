@@ -24,6 +24,8 @@ public:
     std::shared_ptr<CCamera> camera;
 
     MainBehaviour(CGameObject* root);
+
+    std::string toString() const { return "MainBehaviour"; }
 };
 
 }

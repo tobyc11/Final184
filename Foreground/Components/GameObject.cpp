@@ -1,6 +1,7 @@
 #include "GameObject.h"
 
 #include <imgui.h>
+#include <sstream>
 
 namespace Foreground
 {
@@ -40,7 +41,15 @@ std::shared_ptr<CGameObject> CGameObject::getFirstWithName(std::string name)
 
 static void InspectorDFSNode(CGameObject* node)
 {
-    if (ImGui::TreeNode(node->toString().c_str()))
+    std::ostringstream s;
+    std::string label = node->toString();
+    if (label.compare("") == 0)
+        s << "<Anonymous>";
+    else
+        s << label;
+    s << " @ " << node;
+
+    if (ImGui::TreeNode(s.str().c_str()))
     {
         for (auto child : node->children)
             InspectorDFSNode(child.get());
