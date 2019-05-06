@@ -52,7 +52,7 @@ static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double
     float moveSpeed = 4;
     float moveDpos = moveSpeed / 120;
 
-    float rotSpeed = 500;
+    float rotSpeed = 1;
 
     // Input handling
     float dYaw = -rotSpeed * game->control.getAnalog(Control::Analog::CameraYaw);
@@ -95,8 +95,9 @@ static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double
         camera->Rotate(dRot, ETransformSpace::World);
     }
 
-    camera->Translate(moveDpos * game->control.yAxis() * movementDir, ETransformSpace::World);
+    camera->Translate(moveDpos * game->control.zAxis() * movementDir, ETransformSpace::World);
     camera->Translate(moveDpos * game->control.xAxis() * strafeDir, ETransformSpace::World);
+    camera->Translate(moveDpos * game->control.yAxis() * tc::Vector3::UP, ETransformSpace::World);
 }
 
 // ----------------------------------------------------------------------------
