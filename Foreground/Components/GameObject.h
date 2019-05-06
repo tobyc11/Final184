@@ -10,8 +10,10 @@ namespace Foreground
 class CGameObject : public std::enable_shared_from_this<CGameObject>
 {
 public:
-    std::shared_ptr<CGameObject> parent;
+    std::weak_ptr<CGameObject> parent;
     std::vector<std::shared_ptr<CGameObject>> children;
+
+    std::shared_ptr<CGameObject> f() { return shared_from_this(); }
 
     virtual std::string toString() const { return ""; }
     virtual size_t getInstanceID() const { return (size_t)this; }

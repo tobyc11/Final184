@@ -20,6 +20,7 @@ bool CGameObject::hasChild(std::shared_ptr<CGameObject> obj) const
 
 void CGameObject::addChild(std::shared_ptr<CGameObject> obj) {
     children.push_back(obj);
+    //obj->parent = f();
 }
 
 std::shared_ptr<CGameObject> CGameObject::getFirstWithName(std::string name)

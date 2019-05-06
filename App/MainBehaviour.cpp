@@ -45,7 +45,8 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
 // Event: logic_tick (__root_events)
 // ----------------------------------------------------------------------------
 
-static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double elapsedTime) {
+static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double elapsedTime)
+{
     auto self = dynamic_pointer_cast<MainBehaviour>(selfref);
 
     float moveSpeed = 4;
@@ -57,7 +58,7 @@ static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double
     float dYaw = -rotSpeed * game->control.getAnalog(Control::Analog::CameraYaw);
     float dPitch = rotSpeed * game->control.getAnalog(Control::Analog::CameraPitch);
 
-    auto &camera = self->cameraNode;
+    auto& camera = self->cameraNode;
 
     const tc::Quaternion& rotation = camera->GetWorldRotation();
     tc::Vector3 lookDirection = rotation * tc::Vector3(0, 0, -1);
@@ -66,10 +67,13 @@ static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double
     tc::Vector3 movementDir;
     float lookDotDown = lookDirection.DotProduct(tc::Vector3::DOWN);
     float lookDotDownSign = (0 < lookDotDown) - (lookDotDown < 0);
-    if (abs(lookDotDown) > 0.5) {
+    if (abs(lookDotDown) > 0.5)
+    {
         // Looking toward the poles
         movementDir = lookDotDownSign * tc::Vector3(upDirection.x, 0, upDirection.z).Normalized();
-    } else {
+    }
+    else
+    {
         // Looking toward the center
         movementDir = tc::Vector3(lookDirection.x, 0, lookDirection.z).Normalized();
     }
@@ -80,14 +84,16 @@ static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double
     tc::Quaternion pitch(dPitch, strafeDir);
     tc::Quaternion dRot = yaw * pitch;
 
-    if ((dRot * upDirection).DotProduct(tc::Vector3::UP) < 0) {
+    if ((dRot * upDirection).DotProduct(tc::Vector3::UP) < 0)
+    {
         // Camera upside down
         dRot.FromLookRotation(-lookDotDownSign * tc::Vector3::DOWN, lookDotDownSign * movementDir);
         camera->SetWorldRotation(dRot);
-    } else {
+    }
+    else
+    {
         camera->Rotate(dRot, ETransformSpace::World);
     }
-
 
     camera->Translate(moveDpos * game->control.yAxis() * movementDir, ETransformSpace::World);
     camera->Translate(moveDpos * game->control.xAxis() * strafeDir, ETransformSpace::World);
@@ -120,7 +126,7 @@ static void render_tick(std::shared_ptr<CBehaviour> selfref, Game* game)
 static void resize(std::shared_ptr<CBehaviour> selfref, Game* game)
 {
     auto self = dynamic_pointer_cast<MainBehaviour>(selfref);
-    
+
     self->renderPipeline->Resize();
 
     self->camera->SetAspectRatio((float)game->windowWidth / (float)game->windowHeight);
@@ -130,11 +136,10 @@ static void resize(std::shared_ptr<CBehaviour> selfref, Game* game)
 // Register handlers
 // ----------------------------------------------------------------------------
 
-MainBehaviour::MainBehaviour(CGameObject* root) {
-    std::shared_ptr<CEvent> ev;
+MainBehaviour::MainBehaviour(CGameObject* root)
+{
+    CGameObject* root_events = root->getFirstWithName("__root_events").get();
 
-    ev = dynamic_pointer_cast<CEvent>(root->getFirstWithName("init"));
-    if (ev)
     {
         EventHandler* handle =
             new EventHandler { VOID_TYPE,
@@ -142,11 +147,9 @@ MainBehaviour::MainBehaviour(CGameObject* root) {
                                  std::type_index(typeid(Game*)) },
                                (handlerFunc_t*)&init };
 
-        handles.insert_or_assign(ev, handle);
+        registerFirstNamedEvent(root_events, "init", handle);
     }
 
-    ev = dynamic_pointer_cast<CEvent>(root->getFirstWithName("logic_tick"));
-    if (ev)
     {
         EventHandler* handle =
             new EventHandler { VOID_TYPE,
@@ -154,11 +157,9 @@ MainBehaviour::MainBehaviour(CGameObject* root) {
                                  std::type_index(typeid(Game*)), std::type_index(typeid(double)) },
                                (handlerFunc_t*)&physics_tick };
 
-        handles.insert_or_assign(ev, handle);
+        registerFirstNamedEvent(root_events, "logic_tick", handle);
     }
 
-    ev = dynamic_pointer_cast<CEvent>(root->getFirstWithName("render_tick"));
-    if (ev)
     {
         EventHandler* handle =
             new EventHandler { VOID_TYPE,
@@ -166,11 +167,9 @@ MainBehaviour::MainBehaviour(CGameObject* root) {
                                  std::type_index(typeid(Game*)) },
                                (handlerFunc_t*)&render_tick };
 
-        handles.insert_or_assign(ev, handle);
+        registerFirstNamedEvent(root_events, "render_tick", handle);
     }
-    
-    ev = dynamic_pointer_cast<CEvent>(root->getFirstWithName("resize"));
-    if (ev)
+
     {
         EventHandler* handle =
             new EventHandler { VOID_TYPE,
@@ -178,6 +177,6 @@ MainBehaviour::MainBehaviour(CGameObject* root) {
                                  std::type_index(typeid(Game*)) },
                                (handlerFunc_t*)&resize };
 
-        handles.insert_or_assign(ev, handle);
+        registerFirstNamedEvent(root_events, "resize", handle);
     }
 }
