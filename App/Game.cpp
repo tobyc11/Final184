@@ -290,6 +290,10 @@ int main(int argc, char* argv[])
                     which_input = Control::Sticky::MoveBack; break;
                 case SDL_SCANCODE_D:
                     which_input = Control::Sticky::MoveRight; break;
+                case SDL_SCANCODE_LSHIFT:
+                    which_input = Control::Sticky::MoveUp; break;
+                case SDL_SCANCODE_LCTRL:
+                    which_input = Control::Sticky::MoveDown; break;
                 case SDL_SCANCODE_ESCAPE:
                     SDL_SetRelativeMouseMode(SDL_FALSE);
                     input_valid = false;
@@ -312,8 +316,8 @@ int main(int argc, char* argv[])
             {
                 uint32_t width, height;
                 game.swapChain->GetSize(width, height); 
-                game.control.setAnalog(Control::Analog::CameraYaw, (double)event.motion.xrel / width);
-                game.control.setAnalog(Control::Analog::CameraPitch, (double)event.motion.yrel / height);
+                game.control.setAnalog(Control::Analog::CameraYaw, (double)event.motion.xrel);
+                game.control.setAnalog(Control::Analog::CameraPitch, (double)event.motion.yrel);
                 break;
             }
             }

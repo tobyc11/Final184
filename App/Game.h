@@ -58,6 +58,8 @@ public:
         MoveRight,
         MoveForward,
         MoveBack,
+        MoveUp,
+        MoveDown,
         MAX_VAL
     };
     enum class Analog {
@@ -89,6 +91,9 @@ public:
         return getSticky(Sticky::MoveLeft) - getSticky(Sticky::MoveRight);
     }
     int yAxis() const {
+        return getSticky(Sticky::MoveUp) - getSticky(Sticky::MoveDown);
+    }
+    int zAxis() const {
         return getSticky(Sticky::MoveForward) - getSticky(Sticky::MoveBack);
     }
 };
