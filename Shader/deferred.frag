@@ -29,22 +29,23 @@ vec3 getCSpos(vec2 uv) {
     return pos.xyz / pos.w;
 }
 
-float rand(vec2 co){
-    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-}
+#include "math.inc"
 
 const int directionSamples = 8;
 const int horizonSamples = 8;
-const float PI = 3.1415926f;
 const float cutoff = 32.0;
 
 const float attenuation = 1.0;
 
-vec2 spherical(float phi) {
-    return vec2(cos(phi), sin(phi));
+vec3 multiBounce(float visibility, vec3 albedo) {
+    vec3 a =  2.0404 * albedo - 0.3324;
+    vec3 b = -4.7951 * albedo + 0.6417;
+    vec3 c =  2.7552 * albedo + 0.6903;
+
+    return max(vec3(visibility), ((visibility * a + b) * visibility + c) * visibility);
 }
 
-float getAO(vec2 uv) {
+float getVisibility(vec2 uv) {
     vec3 curr_vpos = getCSpos(uv);
     vec3 V = -normalize(curr_vpos);
 
@@ -52,14 +53,15 @@ float getAO(vec2 uv) {
 
     vec3 cnorm = getNormal(uv);
 
-    float ao = 0.0;
+    float integral = 0.0;
 
     vec2 normalMapDims = textureSize(t_normals, 0).xy;
 
     float radius = normalMapDims.y * 0.5 / -curr_vpos.z;
     float totalWeight = 0.0;
 
-    float phi = -rand(uv) * PI / float(directionSamples);
+    float phi = -rand21(uv) * PI / float(directionSamples);
+    float rStep = radius / float(horizonSamples / 2);
 
     for (int samp = 0; samp < directionSamples; samp++) {
         phi += PI / float(directionSamples);
@@ -69,8 +71,11 @@ float getAO(vec2 uv) {
         vec3 sliceDir = vec3(spherical(phi), 0.0);
         vec2 sliceDirection = vec2(sliceDir.x, -sliceDir.y);
 
+        float r = rStep * rand21(uv + vec2(samp));
+
         for (int j = 0; j < horizonSamples / 2; j++) {
-            vec2 offset = radius * (float(j) + rand(uv + vec2(samp, j))) / float(horizonSamples / 2) * sliceDirection / normalMapDims;
+            vec2 offset = r * sliceDirection / normalMapDims;
+            r += rStep;
 
             vec2 uv1 = uv - offset; // Tangent direction
             vec2 uv2 = uv + offset; // Opposite to angent direction
@@ -83,10 +88,13 @@ float getAO(vec2 uv) {
             if (clamp(uv1, vec2(0.0), vec2(1.0)) != uv1) hs.x = -1.0;
             if (clamp(uv2, vec2(0.0), vec2(1.0)) != uv2) hs.y = -1.0;
 
-            h = max(h, hs);
+            // Thicknes heuristics
+            const float blendFactor = 0.5;
+            vec2 flag = step(hs, h);
+            h = mix(mix(h, hs, blendFactor), max(h, hs), flag);
         }
 
-        h = acos(h);
+        h = fastAcos(h);
 
         vec3 sliceNormal = normalize(cross(V, sliceDir));
         vec3 sliceBitangent = normalize(cross(sliceNormal, V));
@@ -97,23 +105,23 @@ float getAO(vec2 uv) {
 
         float cosn = dot(projNorm, V);
         float sinn = dot(projNorm, sliceBitangent);
-        float n = acos(cosn) * sign(sinn);
+        float n = fastAcos(cosn) * sign(sinn);
 
-        h.x = n + max(-h.x - n, -PI/2);
-        h.y = n + min( h.y - n, PI/2);
+        h.x = n + max(-h.x - n, -half_PI);
+        h.y = n + min( h.y - n,  half_PI);
 
         float a = 0.25 * dot(-cos(2.0 * h - n) + cos(n) + 2.0 * h * sin(n), vec2(1.0));
 
-        ao += a * weight;
+        integral += a * weight;
     }
 
-    return ao / float(directionSamples);
+    return integral / float(directionSamples);
 }
 
 void main() {
-    vec3 ao = vec3(getAO(inUV));
+    float visibility = getVisibility(inUV);
 
     vec3 albedo = texture(sampler2D(t_albedo, s), inUV).rgb;
 
-    outColor = vec4(ao, 1.0);
+    outColor = vec4(vec3(visibility), 1.0);
 }
