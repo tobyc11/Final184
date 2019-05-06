@@ -4,8 +4,6 @@
 #include <fstream>
 #include <iostream>
 
-#include <spirv_cross.hpp>
-
 using namespace std;
 
 namespace Foreground
@@ -29,21 +27,6 @@ CMaterial::CMaterial(const string& VS_file, const string& PS_file) {
     vector<char> spriv_vs = loadRawSpriv(VS_file);
     vector<char> spriv_ps = loadRawSpriv(PS_file);
 
-    spirv_cross::Compiler comp(move(spirv));
-
-    auto active = comp.get_active_interface_variables();
-    ShaderResources res = comp.get_shader_resources(active);
-    comp.set_enabled_interface_variables(move(active));
-
-    // TODO do these stuff properlly
-    for (Resource r : res.separate_images)
-    {
-        
-    }
-
-    for (Resource r : res.separate_samplers)
-    {
-    }
 }
 
 void CMaterial::setSampler(std::string id, RHI::CSampler::Ref obj) {}
