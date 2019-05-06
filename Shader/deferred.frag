@@ -55,6 +55,8 @@ float getAO(vec2 uv) {
     float ao = 0.0;
 
     vec2 normalMapDims = textureSize(t_normals, 0).xy;
+    vec2 aspectRatioAdjustment = 1.0 / normalMapDims;
+
     int m = 100;
 
     float phi = rand(uv) * PI / float(samplesCount);
@@ -65,14 +67,14 @@ float getAO(vec2 uv) {
         float ds_z = -1.0;
         float dt_z = -1.0;
 
-        vec2 sliceDirection = spherical(phi);
+        vec2 sliceDirection = spherical(phi) * aspectRatioAdjustment;
 
-        vec3 sliceDir = vec3(sliceDirection, 0.0);
+        vec3 sliceDir = vec3(normalize(sliceDirection), 0.0);
         vec3 sliceBitangent = cross(V, sliceDir);
         vec3 sliceTangent = cross(sliceBitangent, V);
 
         for (int j = 1; j <= m/2; j++) {
-            vec2 offset = sliceDirection * float(j) / normalMapDims;
+            vec2 offset = sliceDirection * float(j);
 
             vec2 uv1 = uv + offset;
             vec2 uv2 = uv - offset;
@@ -88,7 +90,7 @@ float getAO(vec2 uv) {
         float h2 = acos(dt_z);
 
         vec3 projNorm = cnorm - sliceBitangent * dot(cnorm, sliceBitangent);
-        float weight = length(projNorm);// + 1e-6;
+        float weight = length(projNorm) + 1e-6;
         projNorm /= weight;
 
         float cosn = dot(projNorm, V);
