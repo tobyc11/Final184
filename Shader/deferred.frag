@@ -1,5 +1,6 @@
 #version 450 core
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_samplerless_texture_functions : enable
 
 layout(location = 0) in vec2 inUV;
 
@@ -14,6 +15,11 @@ layout(set = 1, binding = 3) uniform texture2D t_depth;
 
 float getDepth(vec2 uv) {
     return texture(sampler2D(t_depth, s), uv).r;
+}
+
+vec3 getNormal(vec2 uv) {
+    vec3 raw = texture(sampler2D(t_normals, s), uv).xyz;
+    return normalize(raw);
 }
 
 vec3 getCSpos(vec2 uv) {
@@ -49,46 +55,70 @@ const vec2 poisson_12[12] = vec2 [] (
 	vec2(-0.791559, -0.59771)
 );
 
+vec2 rotate2d(vec2 v, float a) {
+    float s = sin(a);
+    float c = cos(a);
+    mat2 m = mat2(c, -s, s, c);
+    return m * v;
+}
+
 float getAO(vec2 uv) {
-    vec3 cpos = getCSpos(uv);
-
-    if (-cpos.z > cutoff) return 1.0;
-
-    vec3 cnorm = texture(sampler2D(t_normals, s), uv).rgb * 2.0 - 1.0;
-
+//    vec3 cpos = getCSpos(uv);
+//
+//    if (-cpos.z > cutoff) return 1.0;
+//
+    vec3 cnorm = getNormal(uv);
+//
     float ao = 0.0;
+//
+//    float adjRadius = radius / cpos.z;
+//
+//    float d = rand(uv) * 0.5 + 0.5;
 
-    float adjRadius = radius / cpos.z;
+    vec2 normalMapDims = textureSize(t_normals, 0).xy;
+    int m = 100;
 
-    float d = rand(uv) * 0.5 + 0.5;
-    
-    for (int i = 0; i < samplesCount; i++) {
-        vec2 offset = poisson_12[i] * d * adjRadius;
-        vec2 suv = uv + offset;
+    float curr_depth = getDepth(uv);
 
-        if (clamp(suv, vec2(0.0), vec2(1.0)) != suv) continue;
+    for (int samp = 0; samp < samplesCount; samp++) {
+        float phi = rand(uv + vec2(samp)) * PI;
 
-        vec3 spos = getCSpos(suv);
+        float ds_z = 0;
+        float dt_z = 0;
 
-        vec3 diff = spos - cpos;
-        float dist = length(diff);
+        for (int j = 1; j <= m/2; j++) {
+            vec2 dt_xy = rotate2d(vec2(j, 0), phi) / normalMapDims;
+            vec2 ds_xy = -dt_xy;
 
-        if (dist > 0.0001) {
-            float occlution = dot(cnorm, diff) / dist;
+            vec3 ds = vec3(ds_xy,
+                           getDepth( uv + ds_xy) - curr_depth);
+            vec3 dt = vec3(dt_xy,
+                           getDepth( uv + dt_xy) - curr_depth);
 
-            ao += max(0.0, attenuation - dist / attenuation) * occlution;
+            ds_z = max(ds_z, normalize(ds).z);
+            dt_z = max(dt_z, normalize(dt).z);
         }
+
+        float h1 = -acos(ds_z);
+        float h2 = acos(dt_z);
+        float n = acos(cnorm.z);
+
+        h1 = n + max(h1 - n, -PI/2);
+        h2 = n + min(h2 - n, PI/2);
+
+        float a = 0.25 * (-cos(2 * h1 - n) + cos(n) + 2 * h1 * sin(n))
+                + 0.25 * (-cos(2 * h2 - n) + cos(n) + 2 * h2 * sin(n));
+
+        ao += a * cnorm.z;
     }
 
-    return clamp(pow(1.0 - ao / float(samplesCount), 2.0), 0.0, 1.0);
+    return ao / samplesCount;
 }
 
 void main() {
-    vec3 ao = vec3(0.0);
-
-    ao = vec3(getAO(inUV));
+    vec3 ao = vec3(getAO(inUV));
 
     vec3 albedo = texture(sampler2D(t_albedo, s), inUV).rgb;
 
-    outColor = vec4(albedo * ao, 1.0);
+    outColor = vec4(ao, 1.0);
 }
