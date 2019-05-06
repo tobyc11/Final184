@@ -31,7 +31,7 @@ vec3 getCSpos(vec2 uv) {
 
 #include "math.inc"
 
-const int directionSamples = 8;
+const int directionSamples = 1;
 const int horizonSamples = 8;
 const float cutoff = 32.0;
 
@@ -58,20 +58,19 @@ float getVisibility(vec2 uv) {
     vec2 normalMapDims = textureSize(t_normals, 0).xy;
 
     float radius = normalMapDims.y * 0.5 / -curr_vpos.z;
-    float totalWeight = 0.0;
 
-    float phi = -rand21(uv) * PI / float(directionSamples);
+    ivec2 coord = ivec2(gl_FragCoord);
+
+    float phi = -(1.0 / 16.0) * float((((coord.x + coord.y) & 0x3) << 2) + (coord.x & 0x3)) * PI;
     float rStep = radius / float(horizonSamples / 2);
 
     for (int samp = 0; samp < directionSamples; samp++) {
-        phi += PI / float(directionSamples);
-
         vec2 h = vec2(-1.0);
 
         vec3 sliceDir = vec3(spherical(phi), 0.0);
         vec2 sliceDirection = vec2(sliceDir.x, -sliceDir.y);
 
-        float r = rStep * rand21(uv + vec2(samp));
+        float r = rStep * (0.25 * float(int(coord.y - coord.x) & 0x3));//rand21(uv + vec2(samp));
 
         for (int j = 0; j < horizonSamples / 2; j++) {
             vec2 offset = r * sliceDirection / normalMapDims;
@@ -113,6 +112,8 @@ float getVisibility(vec2 uv) {
         float a = 0.25 * dot(-cos(2.0 * h - n) + cos(n) + 2.0 * h * sin(n), vec2(1.0));
 
         integral += a * weight;
+  
+        phi += PI / float(directionSamples);
     }
 
     return integral / float(directionSamples);

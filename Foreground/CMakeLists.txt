@@ -24,6 +24,8 @@ include(GenerateExportHeader)
 target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 generate_export_header(${MODULE_NAME} EXPORT_MACRO_NAME FOREGROUND_API EXPORT_FILE_NAME ForegroundAPI.h)
 
+target_link_libraries(BackendPriv INTERFACE spirv-cross-glsl)
+
 target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if(DEFAULT_COMPILE_OPTIONS)
     target_compile_options(${MODULE_NAME} ${DEFAULT_COMPILE_OPTIONS})

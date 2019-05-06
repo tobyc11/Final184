@@ -29,8 +29,9 @@ int platformInit(std::vector<std::string> cmd_args, Game& game)
     game.window = SDL_CreateWindow("RHI Triangle Demo", SDL_WINDOWPOS_UNDEFINED,
                                    SDL_WINDOWPOS_UNDEFINED, 640, 480,
                                    SDL_WINDOW_RESIZABLE
+                                 | SDL_WINDOW_ALLOW_HIGHDPI
 #if TC_OS == TC_OS_MAC_OS_X
-                                       | SDL_WINDOW_VULKAN
+                                 | SDL_WINDOW_VULKAN
 #endif
     );
 
@@ -265,7 +266,7 @@ int main(int argc, char* argv[])
                 {
                     game.device->WaitIdle();
 
-                    SDL_GetWindowSize(game.window, &game.windowWidth, &game.windowHeight);
+                    SDL_GL_GetDrawableSize(game.window, &game.windowWidth, &game.windowHeight);
 
                     // Call resize events
                     resize(game, main_behaviour);
