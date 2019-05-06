@@ -1,4 +1,4 @@
-#version 450 core
+#version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_samplerless_texture_functions : enable
 
@@ -14,11 +14,11 @@ layout(set = 1, binding = 2) uniform texture2D t_normals;
 layout(set = 1, binding = 3) uniform texture2D t_depth;
 
 float getDepth(vec2 uv) {
-    return texture(sampler2D(t_depth, s), uv).r;
+    return texelFetch(sampler2D(t_depth, s), ivec2(uv * textureSize(t_depth, 0)), 0).r;
 }
 
 vec3 getNormal(vec2 uv) {
-    vec3 raw = texture(sampler2D(t_normals, s), uv).xyz;
+    vec3 raw = fma(texture(sampler2D(t_normals, s), uv).xyz, vec3(2.0), vec3(-1.0));
     return normalize(raw);
 }
 
@@ -33,9 +33,9 @@ float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-const int samplesCount = 12;
+const int directionSamples = 8;
+const int horizonSamples = 8;
 const float PI = 3.1415926f;
-const float radius = 0.3;
 const float cutoff = 32.0;
 
 const float attenuation = 1.0;
@@ -55,58 +55,59 @@ float getAO(vec2 uv) {
     float ao = 0.0;
 
     vec2 normalMapDims = textureSize(t_normals, 0).xy;
-    vec2 aspectRatioAdjustment = 1.0 / normalMapDims;
 
-    int m = 100;
+    float radius = normalMapDims.y * 0.5 / -curr_vpos.z;
+    float totalWeight = 0.0;
 
-    float phi = rand(uv) * PI / float(samplesCount);
+    float phi = -rand(uv) * PI / float(directionSamples);
 
-    for (int samp = 0; samp < samplesCount; samp++) {
-        phi += PI / float(samplesCount);
+    for (int samp = 0; samp < directionSamples; samp++) {
+        phi += PI / float(directionSamples);
 
-        float ds_z = -1.0;
-        float dt_z = -1.0;
+        vec2 h = vec2(-1.0);
 
-        vec2 sliceDirection = spherical(phi) * aspectRatioAdjustment;
+        vec3 sliceDir = vec3(spherical(phi), 0.0);
+        vec2 sliceDirection = vec2(sliceDir.x, -sliceDir.y);
 
-        vec3 sliceDir = vec3(normalize(sliceDirection), 0.0);
-        vec3 sliceBitangent = cross(V, sliceDir);
-        vec3 sliceTangent = cross(sliceBitangent, V);
+        for (int j = 0; j < horizonSamples / 2; j++) {
+            vec2 offset = radius * (float(j) + rand(uv + vec2(samp, j))) / float(horizonSamples / 2) * sliceDirection / normalMapDims;
 
-        for (int j = 1; j <= m/2; j++) {
-            vec2 offset = sliceDirection * float(j);
-
-            vec2 uv1 = uv + offset;
-            vec2 uv2 = uv - offset;
+            vec2 uv1 = uv - offset; // Tangent direction
+            vec2 uv2 = uv + offset; // Opposite to angent direction
 
             vec3 ds = getCSpos(uv1) - curr_vpos;
             vec3 dt = getCSpos(uv2) - curr_vpos;
 
-            ds_z = max(ds_z, dot(V, normalize(ds)));
-            dt_z = max(dt_z, dot(V, normalize(dt)));
+            vec2 hs = vec2(dot(V, normalize(ds)), dot(V, normalize(dt)));
+
+            if (clamp(uv1, vec2(0.0), vec2(1.0)) != uv1) hs.x = -1.0;
+            if (clamp(uv2, vec2(0.0), vec2(1.0)) != uv2) hs.y = -1.0;
+
+            h = max(h, hs);
         }
 
-        float h1 = -acos(ds_z);
-        float h2 = acos(dt_z);
+        h = acos(h);
 
-        vec3 projNorm = cnorm - sliceBitangent * dot(cnorm, sliceBitangent);
+        vec3 sliceNormal = normalize(cross(V, sliceDir));
+        vec3 sliceBitangent = normalize(cross(sliceNormal, V));
+
+        vec3 projNorm = cnorm - sliceNormal * dot(cnorm, sliceNormal);
         float weight = length(projNorm) + 1e-6;
         projNorm /= weight;
 
         float cosn = dot(projNorm, V);
-        float sinn = dot(projNorm, sliceTangent);
-        float n = atan(sinn, cosn);
+        float sinn = dot(projNorm, sliceBitangent);
+        float n = acos(cosn) * sign(sinn);
 
-        h1 = n + max(h1 - n, -PI/2);
-        h2 = n + min(h2 - n, PI/2);
+        h.x = n + max(-h.x - n, -PI/2);
+        h.y = n + min( h.y - n, PI/2);
 
-        float a = 0.25 * (-cos(2.0 * h1 - n) + cos(n) + 2.0 * h1 * sin(n))
-                + 0.25 * (-cos(2.0 * h2 - n) + cos(n) + 2.0 * h2 * sin(n));
+        float a = 0.25 * dot(-cos(2.0 * h - n) + cos(n) + 2.0 * h * sin(n), vec2(1.0));
 
         ao += a * weight;
     }
 
-    return ao / samplesCount;
+    return ao / float(directionSamples);
 }
 
 void main() {
