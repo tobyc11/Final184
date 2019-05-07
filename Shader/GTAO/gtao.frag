@@ -31,8 +31,8 @@ vec3 getCSpos(vec2 uv) {
 
 #include "math.inc"
 
-const int directionSamples = 1;
-const int horizonSamples = 8;
+const int directionSamples = 4;
+const int horizonSamples = 4;
 const float cutoff = 32.0;
 
 const float attenuation = 1.0;
@@ -122,7 +122,5 @@ float getVisibility(vec2 uv) {
 void main() {
     float visibility = getVisibility(inUV);
 
-    vec3 albedo = texture(sampler2D(t_albedo, s), inUV).rgb;
-
-    outColor = vec4(vec3(visibility), 1.0);
+    outColor = vec4(visibility, 0.0, 0.0, 1.0);
 }

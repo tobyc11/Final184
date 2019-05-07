@@ -1,6 +1,7 @@
 #include "MegaPipeline.h"
 #include "GBufferRenderer.h"
 #include "Resources/ResourceManager.h"
+
 #include <RHIImGuiBackend.h>
 #include <ShaderModule.h>
 #include <fstream>
@@ -44,18 +45,7 @@ namespace Foreground
         CreateRenderPasses();
         GBufferRenderer.SetRenderPass(GBufferPass);
 
-        RHI::CRHIImGuiBackend::Init(RenderDevice, ScreenPass);
-
-        {
-            RHI::CPipelineDesc desc;
-            desc.VS = LoadSPIRV(RenderDevice, "Quad.vert.spv");
-            desc.PS = LoadSPIRV(RenderDevice, "deferred.frag.spv");
-            desc.RasterizerState.CullMode = RHI::ECullModeFlags::None;
-            desc.DepthStencilState.DepthEnable = false;
-            desc.RenderPass = ScreenPass;
-            desc.Subpass = 0;
-            BlitPipeline = RenderDevice->CreatePipeline(desc);
-        }
+        RHI::CRHIImGuiBackend::Init(RenderDevice, gtao_visibility->getRenderPass());
     }
 
     void CMegaPipeline::SetSceneView(std::unique_ptr<CSceneView> sceneView)
@@ -71,7 +61,9 @@ namespace Foreground
         SwapChain->GetSize(w, h);
 
         GBufferPass = nullptr;
-        ScreenPass = nullptr;
+
+        gtao_visibility = nullptr;
+        gtao_blur = nullptr;
 
         CreateGBufferPass(w, h);
         CreateScreenPass();
@@ -99,19 +91,34 @@ namespace Foreground
             SceneView->GetVisiblePrimitiveList());
         ctx->EndRenderPass();
 
-        ctx->BeginRenderPass(*ScreenPass, { RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f) });
-        ctx->BindPipeline(*BlitPipeline);
-        BindEngineCommon(*ctx);
-        ctx->BindSampler(*GlobalLinearSampler, 1, 0, 0);
-        ctx->BindImageView(*GBuffer0, 1, 1, 0);
-        ctx->BindImageView(*GBuffer1, 1, 2, 0);
-        ctx->BindImageView(*GBufferDepth, 1, 3, 0);
-        ctx->Draw(3, 1, 0, 0);
+        GlobalConstants constants;
+        constants.CameraPos = tc::Vector4(SceneView->GetCameraNode()->GetWorldPosition(), 1.0f);
+        constants.ViewMat =
+            SceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4().Transpose();
+        constants.ProjMat = SceneView->GetCameraNode()->GetCamera()->GetMatrix().Transpose();
+        constants.InvProj =
+            SceneView->GetCameraNode()->GetCamera()->GetMatrix().Inverse().Transpose();
+
+        gtao_visibility->beginRender(ctx);
+        gtao_visibility->setSampler("s", GlobalLinearSampler);
+        gtao_visibility->setImageView("t_albedo", GBuffer0);
+        gtao_visibility->setImageView("t_normals", GBuffer1);
+        gtao_visibility->setImageView("t_depth", GBufferDepth);
+        gtao_visibility->setStruct("GlobalConstants", sizeof(GlobalConstants), &constants);
+        gtao_visibility->blit2d();
+        gtao_visibility->endRender();
+
+        gtao_blur->beginRender(ctx);
+        gtao_blur->setSampler("s", GlobalLinearSampler);
+        gtao_blur->setImageView("t_ao", gtao_visibility->getRTViews()[0]);
+        gtao_blur->blit2d();
 
         auto* drawData = ImGui::GetDrawData();
         if (drawData)
             RHI::CRHIImGuiBackend::RenderDrawData(drawData, *ctx);
-        ctx->EndRenderPass();
+
+        gtao_blur->endRender();
+
         SceneView->FrameFinished();
 
         RHI::CSwapChainPresentInfo info;
@@ -162,7 +169,7 @@ namespace Foreground
         GBuffer0 = RenderDevice->CreateImageView(albedoViewDesc, albedoImage);
 
         CImageViewDesc normalsViewDesc;
-        normalsViewDesc.Format = EFormat::R8G8B8A8_UNORM;
+        normalsViewDesc.Format = EFormat::R16G16B16A16_UNORM;
         normalsViewDesc.Type = EImageViewType::View2D;
         normalsViewDesc.Range.Set(0, 1, 0, 1);
         GBuffer1 = RenderDevice->CreateImageView(normalsViewDesc, normalsImage);
@@ -193,19 +200,22 @@ namespace Foreground
         uint32_t width, height;
         SwapChain->GetSize(width, height);
 
-        CImageViewDesc fbViewDesc;
-        fbViewDesc.Format = EFormat::R8G8B8A8_UNORM;
-        fbViewDesc.Type = EImageViewType::View2D;
-        fbViewDesc.Range.Set(0, 1, 0, 1);
-        auto fbView = RenderDevice->CreateImageView(fbViewDesc, fbImage);
+        auto aoImage = RenderDevice->CreateImage2D(
+            EFormat::R16G16B16A16_SFLOAT,
+            EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
+            width, height);
 
-        CRenderPassDesc rpDesc;
-        rpDesc.AddAttachment(fbView, EAttachmentLoadOp::Clear, EAttachmentStoreOp::Store);
-        rpDesc.Subpasses.resize(1);
-        rpDesc.Subpasses[0].AddColorAttachment(0);
-        SwapChain->GetSize(rpDesc.Width, rpDesc.Height);
-        rpDesc.Layers = 1;
-        ScreenPass = RenderDevice->CreateRenderPass(rpDesc);
+        gtao_visibility = std::shared_ptr<CMaterial>(
+            new CMaterial(RenderDevice, "Common/Quad.vert.spv", "GTAO/gtao.frag.spv"));
+
+        gtao_visibility->renderTargets = { { aoImage, EFormat::R16G16B16A16_SFLOAT } };
+        gtao_visibility->createPipeline(width, height);
+        
+        gtao_blur = std::shared_ptr<CMaterial>(
+            new CMaterial(RenderDevice, "Common/Quad.vert.spv", "GTAO/blur.frag.spv"));
+
+        gtao_blur->renderTargets = { { fbImage } };
+        gtao_blur->createPipeline(width, height);
     }
 
 } /* namespace Foreground */

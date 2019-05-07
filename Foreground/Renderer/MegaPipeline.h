@@ -6,6 +6,8 @@
 #include <Resources.h>
 #include <Sampler.h>
 
+#include <Components/Material.h>
+
 namespace Foreground
 {
 
@@ -46,15 +48,15 @@ private:
     RHI::CImageView::Ref GBufferDepth;
     RHI::CRenderPass::Ref GBufferPass;
 
-    RHI::CImageView::Ref FBView;
-    RHI::CRenderPass::Ref ScreenPass;
-
     RHI::CSampler::Ref GlobalNiceSampler;
     RHI::CSampler::Ref GlobalLinearSampler;
     RHI::CSampler::Ref GlobalNearestSampler;
     RHI::CPipeline::Ref BlitPipeline;
 
     CGBufferRenderer GBufferRenderer;
+
+    std::shared_ptr<CMaterial> gtao_visibility;
+    std::shared_ptr<CMaterial> gtao_blur;
 };
 
 } /* namespace Foreground */
