@@ -83,6 +83,11 @@ public:
     void setAnalog(Analog which, float val) {
         analog_states[(size_t)which] = val;
     }
+    void lerpAnalog(Analog which, float target, float t) {
+        float old = getAnalog(which);
+        float out = old * (1-t) + target * t;
+        setAnalog(which, out);
+    }
     float getAnalog(Analog which) const {
         return analog_states[(size_t)which];
     }

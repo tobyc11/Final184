@@ -247,8 +247,7 @@ int main(int argc, char* argv[])
     while (game.isRunning.load())
     {
 
-        game.control.setAnalog(Control::Analog::CameraYaw, 0);
-        game.control.setAnalog(Control::Analog::CameraPitch, 0);
+        bool mouseReady = false;
 
         SDL_Event event;
         while (SDL_PollEvent(&event))
@@ -314,13 +313,20 @@ int main(int argc, char* argv[])
             }
             case SDL_MOUSEMOTION:
             {
-                uint32_t width, height;
-                game.swapChain->GetSize(width, height); 
-                game.control.setAnalog(Control::Analog::CameraYaw, (double)event.motion.xrel);
-                game.control.setAnalog(Control::Analog::CameraPitch, (double)event.motion.yrel);
+                mouseReady = true;
                 break;
             }
             }
+        }
+
+        if (mouseReady) {
+            int x, y;
+            SDL_GetRelativeMouseState(&x, &y);
+            game.control.lerpAnalog(Control::Analog::CameraYaw, (double)x, 0.3);
+            game.control.lerpAnalog(Control::Analog::CameraPitch, (double)y, 0.3);
+        } else {
+            game.control.lerpAnalog(Control::Analog::CameraYaw, 0, 0.7);
+            game.control.lerpAnalog(Control::Analog::CameraPitch, 0, 0.7);
         }
 
         // Trigger render_tick event

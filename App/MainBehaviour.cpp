@@ -52,24 +52,25 @@ static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double
     float moveSpeed = 4;
     float moveDpos = moveSpeed / 120;
 
-    float rotSpeed = 1;
+    float rotSpeed = 0.002;
 
     // Input handling
     float dYaw = -rotSpeed * game->control.getAnalog(Control::Analog::CameraYaw);
-    float dPitch = rotSpeed * game->control.getAnalog(Control::Analog::CameraPitch);
+    float dPitch = -rotSpeed * game->control.getAnalog(Control::Analog::CameraPitch);
 
     auto& camera = self->cameraNode;
 
     const tc::Quaternion& rotation = camera->GetWorldRotation();
-    tc::Vector3 lookDirection = rotation * tc::Vector3(0, 0, -1);
-    tc::Vector3 upDirection = rotation * tc::Vector3::UP;
+    tc::Vector3 lookDirection = rotation * tc::Vector3::FORWARD;
 
     tc::Vector3 movementDir;
     float lookDotDown = lookDirection.DotProduct(tc::Vector3::DOWN);
-    float lookDotDownSign = (0 < lookDotDown) - (lookDotDown < 0);
     if (abs(lookDotDown) > 0.5)
     {
         // Looking toward the poles
+        tc::Vector3 upDirection = rotation * tc::Vector3::UP;
+        float lookDotDownSign = (0 < lookDotDown) - (lookDotDown < 0);
+
         movementDir = lookDotDownSign * tc::Vector3(upDirection.x, 0, upDirection.z).Normalized();
     }
     else
@@ -79,10 +80,6 @@ static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double
     }
 
     tc::Vector3 strafeDir = tc::Vector3(movementDir.z, 0, -movementDir.x);
-
-    tc::Quaternion yaw(dYaw, tc::Vector3::UP);
-    tc::Quaternion pitch(dPitch, strafeDir);
-    tc::Quaternion dRot = yaw * pitch;
 
     camera->Translate(moveDpos * game->control.zAxis() * movementDir, ETransformSpace::World);
     camera->Translate(moveDpos * game->control.xAxis() * strafeDir, ETransformSpace::World);
@@ -94,16 +91,24 @@ static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double
         return;
     }
 
-    if ((dRot * upDirection).DotProduct(tc::Vector3::UP) < 0)
-    {
-        // Camera upside down
-        dRot.FromLookRotation(-lookDotDownSign * tc::Vector3::DOWN, lookDotDownSign * movementDir);
-        camera->SetWorldRotation(dRot);
-    }
-    else
-    {
-        camera->Rotate(dRot, ETransformSpace::World);
-    }
+    float currYaw = atan2(movementDir.x, movementDir.z);
+    float newYaw = dYaw + currYaw;
+    float currPitch = asin(lookDirection.y);
+    float newPitch = clamp(-tc::M_HALF_PI, currPitch + dPitch, tc::M_HALF_PI);
+
+    tc::Vector3 pitched_forward(0, -sin(newPitch), -cos(newPitch));
+    tc::Vector3 pitched_up(0, -pitched_forward.z, pitched_forward.y);
+    tc::Vector3 pitched_strafe = -pitched_forward.CrossProduct(pitched_up);
+
+    tc::Matrix3 pitched_space(pitched_strafe, pitched_up, pitched_forward);
+
+    tc::Matrix3 rotateYaw(
+         cos(newYaw), 0, sin(newYaw),
+         0,           1,           0,
+        -sin(newYaw), 0, cos(newYaw)
+    );
+
+    camera->SetWorldRotation(tc::Quaternion(rotateYaw * pitched_space));
 }
 
 // ----------------------------------------------------------------------------
