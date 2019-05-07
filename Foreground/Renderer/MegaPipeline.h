@@ -57,6 +57,7 @@ private:
 
     std::shared_ptr<CMaterial> gtao_visibility;
     std::shared_ptr<CMaterial> gtao_blur;
+    std::shared_ptr<CMaterial> gtao_color;
 };
 
 } /* namespace Foreground */

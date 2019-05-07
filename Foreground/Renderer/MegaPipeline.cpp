@@ -64,6 +64,7 @@ namespace Foreground
 
         gtao_visibility = nullptr;
         gtao_blur = nullptr;
+        gtao_color = nullptr;
 
         CreateGBufferPass(w, h);
         CreateScreenPass();
@@ -112,12 +113,19 @@ namespace Foreground
         gtao_blur->setSampler("s", GlobalLinearSampler);
         gtao_blur->setImageView("t_ao", gtao_visibility->getRTViews()[0]);
         gtao_blur->blit2d();
+        gtao_blur->endRender();
+
+        gtao_color->beginRender(ctx);
+        gtao_color->setSampler("s", GlobalLinearSampler);
+        gtao_color->setImageView("t_albedo", GBuffer0);
+        gtao_color->setImageView("t_ao", gtao_blur->getRTViews()[0]);
+        gtao_color->blit2d();
 
         auto* drawData = ImGui::GetDrawData();
         if (drawData)
             RHI::CRHIImGuiBackend::RenderDrawData(drawData, *ctx);
 
-        gtao_blur->endRender();
+        gtao_color->endRender();
 
         SceneView->FrameFinished();
 
@@ -204,6 +212,10 @@ namespace Foreground
             EFormat::R16G16B16A16_SFLOAT,
             EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
             width, height);
+        auto aoImage2 = RenderDevice->CreateImage2D(
+            EFormat::R16G16B16A16_SFLOAT,
+            EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
+            width, height);
 
         gtao_visibility = std::shared_ptr<CMaterial>(
             new CMaterial(RenderDevice, "Common/Quad.vert.spv", "GTAO/gtao.frag.spv"));
@@ -214,8 +226,14 @@ namespace Foreground
         gtao_blur = std::shared_ptr<CMaterial>(
             new CMaterial(RenderDevice, "Common/Quad.vert.spv", "GTAO/blur.frag.spv"));
 
-        gtao_blur->renderTargets = { { fbImage } };
+        gtao_blur->renderTargets = { { aoImage2, EFormat::R16G16B16A16_SFLOAT } };
         gtao_blur->createPipeline(width, height);
+
+        gtao_color = std::shared_ptr<CMaterial>(
+            new CMaterial(RenderDevice, "Common/Quad.vert.spv", "GTAO/color.frag.spv"));
+
+        gtao_color ->renderTargets = { { fbImage } };
+        gtao_color ->createPipeline(width, height);
     }
 
 } /* namespace Foreground */
