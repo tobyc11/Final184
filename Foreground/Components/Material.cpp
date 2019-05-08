@@ -105,6 +105,8 @@ void CMaterial::createPipeline(int w, int h)
     renderPass = device->CreateRenderPass(rpDesc);
 
     // 2. Create render pipeline
+
+    // 2.1 Pipeline descriptions
     RHI::CPipelineDesc desc;
     desc.VS = VS;
     desc.PS = PS;
@@ -112,7 +114,51 @@ void CMaterial::createPipeline(int w, int h)
     desc.DepthStencilState.DepthEnable = false;
     desc.RenderPass = renderPass;
     desc.Subpass = 0;
+
+    // 2.2 Pipeline descriptions for vertex attributes
+    desc.VertexBindings.clear();
+    desc.VertexBindings.reserve(inputBuffers.size());
+    for (auto const& p : inputBuffers)
+        desc.VertexBindings.emplace_back(p.second);
+
+    desc.VertexAttributes.clear();
+    desc.VertexAttributes.reserve(vertexAttributes.size());
+    for (auto const& attr : vertexAttributes)
+    {
+        if (resources.find(attr.second.id) == resources.end())
+        {
+            cerr << "Vertex attribute " << attr.second.id << " not found in shaders" << endl;
+            continue; 
+        }
+
+        uint32_t location = resources[attr.second.id].Location;
+        uint32_t bufferBinding = getInputBufferBinding(attr.second.buffer_name);
+
+        if (bufferBinding == -1)
+        {
+            cerr << "Buffer " << attr.second.buffer_name << " for vertex attribute " << attr.second.id << " not found" << endl;
+            continue;
+        }
+
+        desc.VertexAttributes.push_back(
+            { location, attr.second.format, (uint32_t)attr.second.offset, bufferBinding });
+    }
+    
     pipeline = device->CreatePipeline(desc);
+}
+
+uint32_t CMaterial::getInputBufferBinding(std::string name) const
+{
+    if (inputBuffers.find(name) != inputBuffers.end())
+        return inputBuffers.at(name).Binding;
+    else
+        return -1;
+}
+
+void CMaterial::setAttribute(std::string id, RHI::EFormat format, size_t offset,
+                             std::string buffer_name)
+{
+    vertexAttributes.insert_or_assign(id, CMaterialNamedAttribute{ id, format, offset, buffer_name });
 }
 
 void CMaterial::setSampler(std::string id, RHI::CSampler::Ref obj)
@@ -139,6 +185,15 @@ void CMaterial::setStruct(std::string id, size_t size, const void* obj)
     {
         CPipelineResource& r = resources[id];
         ctx->BindConstants(obj, size, r.Set, r.Binding, 0);
+    }
+}
+
+void CMaterial::setBuffer(std::string id, CBuffer& obj, size_t offset)
+{
+    if (ctx)
+    {
+        auto desc = inputBuffers[id];
+        ctx->BindVertexBuffer(desc.Binding, obj, offset);
     }
 }
 

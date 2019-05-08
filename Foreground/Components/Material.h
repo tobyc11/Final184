@@ -7,9 +7,9 @@
 
 #include <Device.h>
 #include <Pipeline.h>
+#include <RenderContext.h>
 #include <Resources.h>
 #include <Sampler.h>
-#include <RenderContext.h>
 #include <ShaderModule.h>
 
 namespace Foreground
@@ -38,6 +38,14 @@ struct CRenderTarget
     bool isDepthStencil = false;
 };
 
+struct CMaterialNamedAttribute
+{
+    std::string id;
+    RHI::EFormat format; 
+    size_t offset;
+    std::string buffer_name;
+};
+
 class CMaterial : public CGameObject
 {
 private:
@@ -55,6 +63,9 @@ private:
 
     std::vector<RHI::CClearValue> clearValues;
 
+    std::unordered_map<std::string, RHI::CVertexInputBindingDesc> inputBuffers;
+    std::unordered_map<std::string, CMaterialNamedAttribute> vertexAttributes;
+
 public:
     std::vector<CRenderTarget> renderTargets;
 
@@ -63,9 +74,15 @@ public:
 
     void createPipeline(int w, int h);
 
+    uint32_t getInputBufferBinding(std::string name) const;
+
+    void setAttribute(std::string id, RHI::EFormat format, size_t offset, std::string buffer_name);
+
     void setSampler(std::string id, RHI::CSampler::Ref obj);
     void setImageView(std::string id, RHI::CImageView::Ref obj);
     void setStruct(std::string id, size_t size, const void* obj);
+
+    void setBuffer(std::string id, RHI::CBuffer& obj, size_t offset = 0);
 
     const std::vector<RHI::CImageView::Ref>& getRTViews() const;
 

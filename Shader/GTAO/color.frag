@@ -11,6 +11,6 @@ layout(set = 1, binding = 2) uniform texture2D t_ao;
 
 void main() {
     vec3 color = texture(sampler2D(t_albedo, s), inUV).xyz;
-    vec3 ao = texture(sampler2D(t_ao, s), inUV).xyz;
+    vec3 ao = texture(sampler2D(t_ao, s), inUV).xxx;
     outColor = vec4(color * ao, 1.0);
 }
