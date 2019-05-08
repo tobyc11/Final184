@@ -68,15 +68,20 @@ local function add_stage(k, v)
             for _, output in ipairs(v.a0) do
                 assert(output.type == "Output")
                 result.outputs[output.a1] = {}
+                result.outputs[output.a1].parent = k
                 result.outputs[output.a1].type = output.a0
                 result.outputs[output.a1].used = false
                 if output.a0 == "uniform" then
-                    --result.outputs[output.a1].code = output.a2
+                    result.outputs[output.a1].code = output.a2
                 end
                 result.outputs[output.a1][locKey] = nextLoc()
                 result.outputs[output.a1].stages = rawget(output, "Stages")
                 if result.outputs[output.a1].stages == nil then
                     result.outputs[output.a1].stages = "VDHGP"
+                end
+                result.outputs[output.a1].set = rawget(v, "Set")
+                if not result.outputs[output.a1].set then
+                    result.outputs[output.a1].set = 0
                 end
                 result.outputs[output.a1].count = 1
             end
@@ -96,8 +101,6 @@ for k, v in pairs(sandbox) do
 end
 
 function parser.add_all_interface_stages()
-    print_table(all_stages)
-    
     for name, block in pairs(interface_stages) do
         if block.subclass == stage_subclass.parameter_block then
             local pb = rt.CParameterBlock()

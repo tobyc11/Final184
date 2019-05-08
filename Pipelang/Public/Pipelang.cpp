@@ -115,7 +115,7 @@ CDescriptorSetWrapper CParameterBlock::CreateDescriptorSet() const
 
 const RHI::CDescriptorSetLayoutBinding& CParameterBlock::GetBinding(const std::string& name) const
 {
-    return Bindings[name];
+    return Bindings.at(name);
 }
 
 void CParameterBlock::AddBinding(const std::string& name,
