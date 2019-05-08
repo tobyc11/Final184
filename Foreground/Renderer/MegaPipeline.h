@@ -22,7 +22,7 @@ struct GlobalConstants
 class CMegaPipeline
 {
 public:
-    CMegaPipeline(RHI::CSwapChain::Ref swapChain);
+    explicit CMegaPipeline(RHI::CSwapChain::Ref swapChain);
 
     void SetSceneView(std::unique_ptr<CSceneView> sceneView);
 
@@ -30,6 +30,7 @@ public:
     void Render();
 
     // Called by the renderers to set global constants
+    void UpdateEngineCommon();
     void BindEngineCommon(RHI::IRenderContext& context);
 
 protected:
@@ -58,6 +59,8 @@ private:
     std::shared_ptr<CMaterial> gtao_visibility;
     std::shared_ptr<CMaterial> gtao_blur;
     std::shared_ptr<CMaterial> gtao_color;
+
+    RHI::CDescriptorSet::Ref EngineCommonDS;
 };
 
 } /* namespace Foreground */

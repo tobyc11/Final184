@@ -1,10 +1,10 @@
 #pragma once
-#include "Shader/VertexShaderCommon.h"
 #include <BoundingBox.h>
 #include <Format.h>
 #include <Pipeline.h>
 #include <RenderContext.h>
 #include <ShaderModule.h>
+#include <Pipelang.h>
 
 namespace Foreground
 {
@@ -27,7 +27,7 @@ class CTriangleMesh
 {
 public:
     void SetAttributes(std::vector<CBufferBinding> bindings,
-                       std::map<EAttributeType, CVertexAttribute> attributes)
+                       std::map<Pl::CVertexAttribs::ESemantic, CVertexAttribute> attributes)
     {
         assert(bindings.size() < 16);
         for (size_t i = 0; i < bindings.size(); i++)
@@ -36,15 +36,15 @@ public:
     }
 
     void PipelineSetVertexInputDesc(RHI::CPipelineDesc& desc,
-                                    const std::map<EAttributeType, uint32_t>& locationMap) const
+                                    const std::map<uint32_t, Pl::CVertexAttribs::ESemantic>& locationMap) const
     {
         for (const auto& pair : locationMap)
         {
-            auto iter = Attributes.find(pair.first);
+            auto iter = Attributes.find(pair.second);
             if (iter == Attributes.end())
                 printf("Warning: required attribute not found in mesh.");
             else
-                desc.VertexAttribFormat(pair.second, iter->second.Format, iter->second.Offset,
+                desc.VertexAttribFormat(pair.first, iter->second.Format, iter->second.Offset,
                                         iter->second.BindingIndex);
         }
         for (uint32_t i = 0; i < static_cast<uint32_t>(BufferBindings.size()); i++)
@@ -90,7 +90,7 @@ public:
 
 private:
     std::array<CBufferBinding, 16> BufferBindings;
-    std::map<EAttributeType, CVertexAttribute> Attributes;
+    std::map<Pl::CVertexAttribs::ESemantic, CVertexAttribute> Attributes;
 
     RHI::CBuffer::Ref IndexBuffer;
     RHI::EFormat IndexBufferFormat;

@@ -1,6 +1,6 @@
 #include "ShaderFactory.h"
 
-namespace Foreground
+namespace Pl
 {
 
 CShaderFactory::CShaderFactory()

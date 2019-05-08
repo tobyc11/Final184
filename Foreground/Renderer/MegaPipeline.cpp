@@ -81,16 +81,20 @@ namespace Foreground
             return;
         }
 
+        UpdateEngineCommon();
+
         // Does culling and stuff
         SceneView->GetCameraNode()->GetScene()->UpdateAccelStructure();
         SceneView->PrepareToRender();
-        auto ctx = RenderDevice->GetImmediateContext();
-        ctx->BeginRenderPass(*GBufferPass,
-            { RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f),
-              RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f), RHI::CClearValue(1.0f, 0) });
+        auto cmdList = RenderQueue->CreateCommandList();
+        cmdList->Enqueue();
+        auto passCtx = cmdList->CreateParallelRenderContext(GBufferPass,{ RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f),
+                                                            RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f), RHI::CClearValue(1.0f, 0) });
+        auto ctx = passCtx->CreateRenderContext(0);
         GBufferRenderer.RenderList(*ctx, SceneView->GetVisiblePrimModelMatrix(),
             SceneView->GetVisiblePrimitiveList());
-        ctx->EndRenderPass();
+        ctx->FinishRecording();
+        passCtx->FinishRecording();
 
         GlobalConstants constants;
         constants.CameraPos = tc::Vector4(SceneView->GetCameraNode()->GetWorldPosition(), 1.0f);
@@ -100,7 +104,7 @@ namespace Foreground
         constants.InvProj =
             SceneView->GetCameraNode()->GetCamera()->GetMatrix().Inverse().Transpose();
 
-        gtao_visibility->beginRender(ctx);
+        gtao_visibility->beginRender(cmdList);
         gtao_visibility->setSampler("s", GlobalLinearSampler);
         gtao_visibility->setImageView("t_albedo", GBuffer0);
         gtao_visibility->setImageView("t_normals", GBuffer1);
@@ -109,13 +113,13 @@ namespace Foreground
         gtao_visibility->blit2d();
         gtao_visibility->endRender();
 
-        gtao_blur->beginRender(ctx);
+        gtao_blur->beginRender(cmdList);
         gtao_blur->setSampler("s", GlobalLinearSampler);
         gtao_blur->setImageView("t_ao", gtao_visibility->getRTViews()[0]);
         gtao_blur->blit2d();
         gtao_blur->endRender();
 
-        gtao_color->beginRender(ctx);
+        gtao_color->beginRender(cmdList);
         gtao_color->setSampler("s", GlobalLinearSampler);
         gtao_color->setImageView("t_albedo", GBuffer0);
         gtao_color->setImageView("t_ao", gtao_blur->getRTViews()[0]);
@@ -126,6 +130,7 @@ namespace Foreground
             RHI::CRHIImGuiBackend::RenderDrawData(drawData, *ctx);
 
         gtao_color->endRender();
+        cmdList->Commit();
 
         SceneView->FrameFinished();
 
@@ -133,11 +138,20 @@ namespace Foreground
         SwapChain->Present(info);
     }
 
-    void CMegaPipeline::BindEngineCommon(RHI::IRenderContext & context)
+    void CMegaPipeline::UpdateEngineCommon()
     {
-        context.BindSampler(*GlobalNiceSampler, 0, 0, 0);
-        context.BindSampler(*GlobalLinearSampler, 0, 1, 0);
-        context.BindSampler(*GlobalNearestSampler, 0, 2, 0);
+        if (!EngineCommonDS)
+        {
+            auto& lib = PipelangContext.GetLibrary("Internal");
+            auto& pb = lib.GetParameterBlock("EngineCommon");
+            EngineCommonDS = pb.CreateDescriptorSet();
+        }
+
+        auto& lib = PipelangContext.GetLibrary("Internal");
+        auto& pb = lib.GetParameterBlock("EngineCommon");
+        pb.BindSampler(EngineCommonDS, GlobalNiceSampler, "GlobalNiceSampler");
+        pb.BindSampler(EngineCommonDS, GlobalLinearSampler, "GlobalLinearSampler");
+        pb.BindSampler(EngineCommonDS, GlobalNearestSampler, "GlobalNearestSampler");
 
         GlobalConstants constants;
         constants.CameraPos = tc::Vector4(SceneView->GetCameraNode()->GetWorldPosition(), 1.0f);
@@ -145,7 +159,12 @@ namespace Foreground
             SceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4().Transpose();
         constants.ProjMat = SceneView->GetCameraNode()->GetCamera()->GetMatrix().Transpose();
         constants.InvProj = SceneView->GetCameraNode()->GetCamera()->GetMatrix().Inverse().Transpose();
-        context.BindConstants(&constants, sizeof(GlobalConstants), 0, 3, 0);
+        pb.BindConstants(EngineCommonDS, &constants, sizeof(GlobalConstants), "GlobalConstants");
+    }
+
+    void CMegaPipeline::BindEngineCommon(RHI::IRenderContext& context)
+    {
+        context.BindRenderDescriptorSet(0, *EngineCommonDS);
     }
 
     void CMegaPipeline::CreateRenderPasses()

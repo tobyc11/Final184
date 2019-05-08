@@ -50,8 +50,9 @@ class CMaterial : public CGameObject
 {
 private:
     RHI::CRenderPass::Ref renderPass;
-    RHI::CPipeline::Ref pipeline;
+    RHI::CManagedPipeline::Ref pipeline;
     RHI::CShaderModule::Ref VS, PS;
+    std::vector<RHI::CDescriptorSet::Ref> DescriptorSets;
 
     std::unordered_map<std::string, RHI::CPipelineResource> resources;
 
@@ -59,7 +60,8 @@ private:
 
     RHI::CDevice::Ref device;
 
-    RHI::IImmediateContext::Ref ctx = nullptr;
+    RHI::IParallelRenderContext::Ref PassCtx;
+    RHI::IRenderContext::Ref ctx = nullptr;
 
     std::vector<RHI::CClearValue> clearValues;
 
@@ -78,19 +80,19 @@ public:
 
     void setAttribute(std::string id, RHI::EFormat format, size_t offset, std::string buffer_name);
 
-    void setSampler(std::string id, RHI::CSampler::Ref obj);
-    void setImageView(std::string id, RHI::CImageView::Ref obj);
-    void setStruct(std::string id, size_t size, const void* obj);
+    void setSampler(const std::string& id, RHI::CSampler::Ref obj);
+    void setImageView(const std::string& id, RHI::CImageView::Ref obj);
+    void setStruct(const std::string& id, size_t size, const void* obj);
 
-    void setBuffer(std::string id, RHI::CBuffer& obj, size_t offset = 0);
+    void setBuffer(const std::string& id, RHI::CBuffer& obj, size_t offset = 0);
 
     const std::vector<RHI::CImageView::Ref>& getRTViews() const;
 
-    void beginRender(RHI::IImmediateContext::Ref ctx);
+    void beginRender(const RHI::CCommandList::Ref& ctx);
     void endRender();
 
     RHI::CRenderPass::Ref getRenderPass() const { return renderPass; }
-    RHI::CPipeline::Ref getPipeline() const { return pipeline; }
+    RHI::CPipeline::Ref getPipeline() const { return pipeline->Get(); }
 
     void drawObject() const {}; // eh... TODO
     void blit2d() const;

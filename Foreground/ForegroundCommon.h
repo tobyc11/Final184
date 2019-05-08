@@ -1,7 +1,7 @@
 #pragma once
 #include "ForegroundAPI.h"
-#include "Shader/ShaderFactory.h"
 #include <Device.h>
+#include <Pipelang.h>
 
 namespace Foreground
 {
@@ -13,6 +13,7 @@ namespace Foreground
 
 extern bool bIsBootstrapped;
 extern RHI::CDevice::Ref RenderDevice;
-extern CShaderFactory GlobalShaderFactory; // To be replaced by Pipelang
+extern RHI::CCommandQueue::Ref RenderQueue;
+extern Pl::CPipelangContext PipelangContext;
 
 } /* namespace Foreground */

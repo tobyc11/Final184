@@ -1,10 +1,8 @@
+#include <utility>
+
 #include "GBufferRenderer.h"
 #include "ForegroundCommon.h"
 #include "MegaPipeline.h"
-#include "Shader/BasicMaterialShader.h"
-#include "Shader/GBufferPixelShader.h"
-#include "Shader/ShaderFactory.h"
-#include "Shader/StaticMeshVertexShader.h"
 
 namespace Foreground
 {
@@ -16,7 +14,7 @@ CGBufferRenderer::CGBufferRenderer(CMegaPipeline* p)
 
 void CGBufferRenderer::SetRenderPass(RHI::CRenderPass::Ref renderPass, uint32_t subpass)
 {
-    RenderPass = renderPass;
+    RenderPass = std::move(renderPass);
     // Optionally rebuild all pipelines
 }
 
@@ -32,28 +30,29 @@ void CGBufferRenderer::RenderList(RHI::IRenderContext& context,
 
 void CGBufferRenderer::PreparePrimitiveResources(std::shared_ptr<CPrimitive> primitive)
 {
+    auto& lib = PipelangContext.GetLibrary("Internal");
+
     // We have to do this since shader combination is statically done
     // Maybe a compile time table is a better solution
     if (auto triMesh = std::dynamic_pointer_cast<CTriangleMesh>(primitive->GetShape()))
     {
         if (auto basicMat = std::dynamic_pointer_cast<CBasicMaterial>(primitive->GetMaterial()))
         {
-            auto vs = GlobalShaderFactory.GetShader<CStatcMeshVertexShader>();
-            auto ps =
-                GlobalShaderFactory
-                    .GetShader<CGBufferPixelShader<CStatcMeshVertexShader, CBasicMaterialShader>>();
             RHI::CPipelineDesc desc;
-            vs->PipelineSetVertexShader(desc);
-            ps->PreparePipelineDesc(desc);
+            lib.GetPipeline(desc, {"EngineCommon", "StandardTriMesh", "PerPrimitive",
+                                   "StaticMeshVS", "DefaultRasterizer", "BasicMaterialParams",
+                                   "BasicMaterial"});
+
             desc.PrimitiveTopology = triMesh->GetPrimitiveTopology();
             desc.RasterizerState.CullMode = RHI::ECullModeFlags::None;
             desc.RenderPass = RenderPass;
-            desc.Subpass = 0;
-            triMesh->PipelineSetVertexInputDesc(desc, vs->GetAttributeLocationMap());
+            desc.Subpass = 0;;
+            triMesh->PipelineSetVertexInputDesc(desc, lib.GetVertexAttribs("StandardTriMesh").GetAttributesByLocation());
             auto pipeline = RenderDevice->CreatePipeline(desc);
 
             CPrimitiveResources resources;
             resources.Pipeline = std::move(pipeline);
+            resources.NodeDS = lib.GetParameterBlock("PerPrimitive").CreateDescriptorSet();
             CachedPrimitiveResources[primitive] = std::move(resources);
         }
     }
@@ -85,22 +84,16 @@ void CGBufferRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4&
     {
         if (auto basicMat = std::dynamic_pointer_cast<CBasicMaterial>(primitive->GetMaterial()))
         {
-            CBasicMaterialShader::MaterialConstants materialConst;
-            materialConst.BaseColor = basicMat->GetAlbedo();
-            materialConst.MetallicRoughness.y = basicMat->GetMetallic();
-            materialConst.MetallicRoughness.z = basicMat->GetRoughness();
-            materialConst.UseTextures =
-                basicMat->GetAlbedoImage() || basicMat->GetMetallicRoughnessImage() ? 1 : 0;
+            context.BindRenderPipeline(*iter->second.Pipeline);
+            basicMat->Bind(context);
 
-            CStatcMeshVertexShader::PerPrimitiveConstants primitiveConstants;
+            PerPrimitiveConstants primitiveConstants;
             primitiveConstants.ModelMat = modelMat.ToMatrix4().Transpose();
+            auto& lib = PipelangContext.GetLibrary("Internal");
+            auto& pb = lib.GetParameterBlock("PerPrimitive");
+            pb.BindConstants(iter->second.NodeDS, &primitiveConstants, sizeof(primitiveConstants), "PerPrimitiveConstants");
+            context.BindRenderDescriptorSet(2, *iter->second.NodeDS);
 
-            context.BindPipeline(*iter->second.Pipeline);
-            CBasicMaterialShader::BindMaterialConstants(context, &materialConst);
-            CBasicMaterialShader::BindBaseColorTex(context, *basicMat->GetAlbedoImage());
-            CBasicMaterialShader::BindMetallicRoughnessTex(context,
-                                                           *basicMat->GetMetallicRoughnessImage());
-            CStatcMeshVertexShader::BindPerPrimitiveConstants(context, &primitiveConstants);
             triMesh->Draw(context);
         }
     }

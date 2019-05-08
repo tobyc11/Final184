@@ -33,34 +33,19 @@ private:
     std::map<uint32_t, ESemantic> AttribsByLocation;
 };
 
-class CParameterBlock;
-
-// Wraps a descriptor set to provide binding by name
-class CDescriptorSetWrapper
-{
-public:
-    explicit CDescriptorSetWrapper(const CParameterBlock& pb);
-
-    const RHI::CDescriptorSet::Ref& Get() const { return DescriptorSet; }
-
-    void BindBuffer(RHI::CBuffer::Ref buffer, size_t offset, size_t range, const std::string& name, uint32_t index);
-    void BindImageView(RHI::CImageView::Ref imageView, const std::string& name, uint32_t index);
-    void BindSampler(RHI::CSampler::Ref sampler, const std::string& name, uint32_t index);
-    void BindBufferView(RHI::CBufferView::Ref bufferView, const std::string& name, uint32_t index);
-    void SetDynamicOffset(size_t offset, const std::string& name, uint32_t index);
-
-private:
-    friend class CParameterBlock;
-    const CParameterBlock& ParameterBlock;
-    RHI::CDescriptorSet::Ref DescriptorSet;
-};
-
 class CParameterBlock
 {
 public:
     RHI::CDescriptorSetLayout::Ref GetDescriptorSetLayout() const;
-    CDescriptorSetWrapper CreateDescriptorSet() const;
+    RHI::CDescriptorSet::Ref CreateDescriptorSet() const;
     const RHI::CDescriptorSetLayoutBinding& GetBinding(const std::string& name) const;
+
+    void BindBuffer(const RHI::CDescriptorSet::Ref& ds, RHI::CBuffer::Ref buffer, size_t offset, size_t range, const std::string& name, uint32_t index = 0);
+    void BindConstants(const RHI::CDescriptorSet::Ref& ds, const void* data, size_t size, const std::string& name, uint32_t index = 0);
+    void BindImageView(const RHI::CDescriptorSet::Ref& ds, RHI::CImageView::Ref imageView, const std::string& name, uint32_t index = 0);
+    void BindSampler(const RHI::CDescriptorSet::Ref& ds, RHI::CSampler::Ref sampler, const std::string& name, uint32_t index = 0);
+    void BindBufferView(const RHI::CDescriptorSet::Ref& ds, RHI::CBufferView::Ref bufferView, const std::string& name, uint32_t index = 0);
+    void SetDynamicOffset(const RHI::CDescriptorSet::Ref& ds, size_t offset, const std::string& name, uint32_t index = 0);
 
     // Called from Lua
     void AddBinding(const std::string& name,
@@ -111,7 +96,9 @@ public:
     CPipelangLibrary& GetLibrary(const std::string& sourceDir);
 
     const RHI::CDevice::Ref& GetDevice() const { return Device; }
-    void SetDevice(const RHI::CDevice::Ref& device) { Device = device; }
+    void SetDevice(const RHI::CDevice::Ref& device) { Device = device; NotifyDeviceChange(); }
+
+    void NotifyDeviceChange();
 
 private:
     RHI::CDevice::Ref Device;

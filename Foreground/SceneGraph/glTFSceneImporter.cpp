@@ -230,7 +230,7 @@ public:
 
             // Convert mesh attributes
             std::map<uint32_t, CBufferBinding> bufferBindingsByView;
-            std::map<EAttributeType, CVertexAttribute> attributes;
+            std::map<Pl::CVertexAttribs::ESemantic, CVertexAttribute> attributes;
             for (const auto& pair : p.attributes)
             {
                 const auto& attrName = pair.first;
@@ -251,23 +251,23 @@ public:
                     bufferBindingsByView[accessor.bufferView] = binding;
                 }
 
-                EAttributeType attrType;
+                Pl::CVertexAttribs::ESemantic attrType;
                 if (attrName == "POSITION")
-                    attrType = EAttributeType::Position;
+                    attrType = Pl::CVertexAttribs::ESemantic::Position;
                 else if (attrName == "NORMAL")
-                    attrType = EAttributeType::Normal;
+                    attrType = Pl::CVertexAttribs::ESemantic::Normal;
                 else if (attrName == "TANGENT")
-                    attrType = EAttributeType::Tangent;
+                    attrType = Pl::CVertexAttribs::ESemantic::Tangent;
                 else if (attrName == "TEXCOORD_0")
-                    attrType = EAttributeType::TexCoord0;
+                    attrType = Pl::CVertexAttribs::ESemantic::TexCoord0;
                 else if (attrName == "TEXCOORD_1")
-                    attrType = EAttributeType::TexCoord1;
+                    attrType = Pl::CVertexAttribs::ESemantic::TexCoord1;
                 else if (attrName == "COLOR_0")
-                    attrType = EAttributeType::Color0;
+                    attrType = Pl::CVertexAttribs::ESemantic::Color0;
                 else if (attrName == "JOINTS_0")
-                    attrType = EAttributeType::Joints0;
+                    attrType = Pl::CVertexAttribs::ESemantic::Joints0;
                 else if (attrName == "WEIGHTS_0")
-                    attrType = EAttributeType::Weights0;
+                    attrType = Pl::CVertexAttribs::ESemantic::Weights0;
                 else
                     throw std::runtime_error("Encountered unsupported mesh attribute");
                 CVertexAttribute attribute;
@@ -280,7 +280,7 @@ public:
                 triMesh->SetElementCount(accessor.count);
 
                 // Bounding box info also comes from position attribute
-                if (attrType == EAttributeType::Position)
+                if (attrType == Pl::CVertexAttribs::ESemantic::Position)
                 {
                     tc::Vector3 min(accessor.minValues[0], accessor.minValues[1],
                                     accessor.minValues[2]);

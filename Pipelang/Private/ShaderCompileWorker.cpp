@@ -1,9 +1,8 @@
 #include "ShaderCompileWorker.h"
-#include "ForegroundCommon.h"
 #include <fstream>
 #include <sstream>
 
-namespace Foreground
+namespace Pl
 {
 
 CShaderCompileWorker::CShaderCompileWorker(CShaderCompileEnvironment env)
@@ -65,7 +64,7 @@ RHI::CShaderModule::Ref CShaderCompileWorker::Compile()
 
     std::vector<char> buffer(size);
     if (file.read(buffer.data(), size))
-        return RenderDevice->CreateShaderModule(buffer.size(), buffer.data());
+        return nullptr; //return RenderDevice->CreateShaderModule(buffer.size(), buffer.data());
     return nullptr;
 }
 

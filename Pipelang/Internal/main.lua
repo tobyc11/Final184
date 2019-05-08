@@ -1,7 +1,7 @@
 VertexAttribs "StandardTriMesh" {
     Output "vec3" "Position";
     Output "vec3" "Normal";
-    Output "vec3" "Tangent";
+    Output "vec4" "Tangent";
     Output "vec2" "TexCoord0";
 };
 
@@ -17,7 +17,7 @@ ParameterBlock "EngineCommon" : Set(0) {
     ]] : Stages "VDHGP";
 };
 
-ParameterBlock "PerPrimitive" : Set(3) {
+ParameterBlock "PerPrimitive" : Set(2) {
     Output "uniform" "PerPrimitiveConstants" [[
         mat4 ModelMat;
         mat4 NormalToWorld;
@@ -26,26 +26,21 @@ ParameterBlock "PerPrimitive" : Set(3) {
 
 function StaticMeshVS()
     Input "vec3" "Position";
+    Input "vec3" "Normal";
+    Input "vec2" "TexCoord0";
     Input "uniform" "GlobalConstants";
     Input "uniform" "PerPrimitiveConstants";
-    Output "vec3" "iWorldPosition";
-    Output "vec3" "iWorldNormal";
+    Output "vec3" "iPosition";
+    Output "vec3" "iNormal";
+    Output "vec4" "iTangent";
+    Output "vec2" "iTexCoord0";
     Code [[
-        vec4 world = ModelMat * vec4(Position, 1);
-        gl_Position = ProjMat * ViewMat * world;
-        iWorldPosition = world.xyz / world.w;
+        vec4 pos = ModelMat * vec4(Position, 1);
+        gl_Position = ProjMat * ViewMat * ModelMat * pos;
+        iPosition = (pos / pos.w).xyz;
+        iTexCoord0 = TexCoord0;
+        iNormal = normalize(mat3(ViewMat) * mat3(ModelMat) * Normal);
     ]];
-
-    if Normal then
-        Input "vec3" "Normal";
-        Code [[
-            iWorldNormal = mat3(ModelMat) * Normal;
-        ]];
-    else
-        Code [[
-            iWorldNormal = vec3(0, 0, 1);
-        ]];
-    end
 end
 
 Rasterizer "DefaultRasterizer" {
@@ -59,9 +54,45 @@ Rasterizer "DefaultRasterizer" {
     DepthClampEnable = false;
 };
 
+ParameterBlock "BasicMaterialParams" : Set(1) {
+    Output "uniform" "MaterialConstants" [[
+        vec4 BaseColorFactor;
+        vec4 MetallicRoughness;
+        bool UseTextures;
+    ]] : Stages "P";
+    Output "texture2D" "BaseColorTex" : Stages "P";
+    Output "texture2D" "MetallicRoughnessTex" : Stages "P";
+};
+
+function BasicMaterial()
+    Input "vec2" "iTexCoord0";
+    Input "uniform" "MaterialConstants";
+    Input "texture2D" "BaseColorTex";
+    Input "texture2D" "MetallicRoughnessTex";
+    Output "vec4" "BaseColor";
+    Output "float" "Metallic";
+    Output "float4" "Roughness";
+
+    Code [[
+        if (!UseTextures)
+        {
+            BaseColor = BaseColorFactor;
+            Metallic = MetallicRoughness.g;
+            Roughness = MetallicRoughness.b;
+        }
+        else
+        {
+            BaseColor = texture(sampler2D(BaseColorTex, GlobalLinearSampler), iTexCoord0) * BaseColorFactor;
+            vec4 mr = texture(sampler2D(MetallicRoughnessTex, GlobalLinearSampler), iTexCoord0);
+            Metallic = mr * MetallicRoughness.g;
+            Roughness = mr * MetallicRoughness.b;
+        }
+    ]]
+end
+
 function NormalVisPS()
-    Input "vec3" "iWorldNormal";
-    Output "vec3" "Target0";
+    Input "vec3" "iNormal";
+    Output "vec4" "Target0";
     Code [[
         Target0 = iWorldNormal / 2 + 0.5;
     ]]

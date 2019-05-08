@@ -1,6 +1,6 @@
 #include "ShaderCache.h"
 
-namespace Foreground
+namespace Pl
 {
 
 CShaderCache& CShaderCache::Get()

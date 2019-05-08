@@ -1,7 +1,3 @@
-#include <utility>
-
-#include <utility>
-
 #include "Pipelang.h"
 #include <PathTools.h>
 
@@ -63,59 +59,63 @@ void CVertexAttribs::AddAttribute(const std::string& name, uint32_t location)
     assert(static_cast<uint32_t>(semantic) != 0);
 }
 
-CDescriptorSetWrapper::CDescriptorSetWrapper(const CParameterBlock& pb) : ParameterBlock(pb)
-{
-}
-
-void CDescriptorSetWrapper::BindBuffer(RHI::CBuffer::Ref buffer,
-                                       size_t offset,
-                                       size_t range,
-                                       const std::string& name,
-                                       uint32_t index)
-{
-    uint32_t binding = ParameterBlock.GetBinding(name).Binding;
-    DescriptorSet->BindBuffer(buffer, offset, range, binding, index);
-}
-
-void CDescriptorSetWrapper::BindImageView(RHI::CImageView::Ref imageView, const std::string& name, uint32_t index)
-{
-    uint32_t binding = ParameterBlock.GetBinding(name).Binding;
-    DescriptorSet->BindImageView(imageView, binding, index);
-}
-
-void CDescriptorSetWrapper::BindSampler(RHI::CSampler::Ref sampler, const std::string& name, uint32_t index)
-{
-    uint32_t binding = ParameterBlock.GetBinding(name).Binding;
-    DescriptorSet->BindSampler(sampler, binding, index);
-}
-
-void CDescriptorSetWrapper::BindBufferView(RHI::CBufferView::Ref bufferView, const std::string& name, uint32_t index)
-{
-    uint32_t binding = ParameterBlock.GetBinding(name).Binding;
-    DescriptorSet->BindBufferView(bufferView, binding, index);
-}
-
-void CDescriptorSetWrapper::SetDynamicOffset(size_t offset, const std::string& name, uint32_t index)
-{
-    uint32_t binding = ParameterBlock.GetBinding(name).Binding;
-    DescriptorSet->SetDynamicOffset(offset, binding, index);
-}
-
 RHI::CDescriptorSetLayout::Ref CParameterBlock::GetDescriptorSetLayout() const
 {
     return Layout;
 }
 
-CDescriptorSetWrapper CParameterBlock::CreateDescriptorSet() const
+RHI::CDescriptorSet::Ref CParameterBlock::CreateDescriptorSet() const
 {
-    auto wrapper = CDescriptorSetWrapper(*this);
-    wrapper.DescriptorSet = GetDescriptorSetLayout()->CreateDescriptorSet();
-    return std::move(wrapper);
+    return GetDescriptorSetLayout()->CreateDescriptorSet();
 }
 
 const RHI::CDescriptorSetLayoutBinding& CParameterBlock::GetBinding(const std::string& name) const
 {
     return Bindings.at(name);
+}
+
+void CParameterBlock::BindBuffer(const RHI::CDescriptorSet::Ref& ds, RHI::CBuffer::Ref buffer,
+                                 size_t offset,
+                                 size_t range,
+                                 const std::string& name,
+                                 uint32_t index)
+{
+    uint32_t binding = GetBinding(name).Binding;
+    ds->BindBuffer(std::move(buffer), offset, range, binding, index);
+}
+
+void CParameterBlock::BindConstants(const RHI::CDescriptorSet::Ref& ds,
+                                    const void* data,
+                                    size_t size,
+                                    const std::string& name,
+                                    uint32_t index)
+{
+    uint32_t binding = GetBinding(name).Binding;
+    ds->BindConstants(data, size, binding, index);
+}
+
+void CParameterBlock::BindImageView(const RHI::CDescriptorSet::Ref& ds, RHI::CImageView::Ref imageView, const std::string& name, uint32_t index)
+{
+    uint32_t binding = GetBinding(name).Binding;
+    ds->BindImageView(std::move(imageView), binding, index);
+}
+
+void CParameterBlock::BindSampler(const RHI::CDescriptorSet::Ref& ds, RHI::CSampler::Ref sampler, const std::string& name, uint32_t index)
+{
+    uint32_t binding = GetBinding(name).Binding;
+    ds->BindSampler(std::move(sampler), binding, index);
+}
+
+void CParameterBlock::BindBufferView(const RHI::CDescriptorSet::Ref& ds, RHI::CBufferView::Ref bufferView, const std::string& name, uint32_t index)
+{
+    uint32_t binding = GetBinding(name).Binding;
+    ds->BindBufferView(std::move(bufferView), binding, index);
+}
+
+void CParameterBlock::SetDynamicOffset(const RHI::CDescriptorSet::Ref& ds, size_t offset, const std::string& name, uint32_t index)
+{
+    uint32_t binding = GetBinding(name).Binding;
+    ds->SetDynamicOffset(offset, binding, index);
 }
 
 void CParameterBlock::AddBinding(const std::string& name,
@@ -155,6 +155,9 @@ void CParameterBlock::AddBinding(const std::string& name,
 
 void CParameterBlock::CreateDescriptorLayout(const RHI::CDevice::Ref& device)
 {
+    if (!device)
+        Layout = nullptr;
+
     if (Layout)
         return;
 
@@ -214,12 +217,9 @@ void CPipelangLibrary::PrecacheShaders()
 
 void CPipelangLibrary::RecreateDeviceResources()
 {
-    if (Parent->GetDevice())
+    for (auto& pair : ParameterBlocks)
     {
-        for (auto& pair : ParameterBlocks)
-        {
-            pair.second.CreateDescriptorLayout(Parent->GetDevice());
-        }
+        pair.second.CreateDescriptorLayout(Parent->GetDevice());
     }
 }
 
@@ -304,6 +304,12 @@ CPipelangLibrary& CPipelangContext::CreateLibrary(std::string sourceDir)
 CPipelangLibrary& CPipelangContext::GetLibrary(const std::string& sourceDir)
 {
     return *LibraryByDir[sourceDir];
+}
+
+void CPipelangContext::NotifyDeviceChange()
+{
+    for (auto& iter : LibraryByDir)
+        iter.second->RecreateDeviceResources();
 }
 
 }

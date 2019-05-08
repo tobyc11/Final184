@@ -14,7 +14,7 @@ class CMegaPipeline;
 class CGBufferRenderer
 {
 public:
-    CGBufferRenderer(CMegaPipeline* p);
+    explicit CGBufferRenderer(CMegaPipeline* p);
 
     void SetRenderPass(RHI::CRenderPass::Ref renderPass, uint32_t subpass = 0);
 
@@ -31,9 +31,15 @@ protected:
 private:
     CMegaPipeline* Parent;
 
+    struct PerPrimitiveConstants
+    {
+        tc::Matrix4 ModelMat;
+    };
+
     struct CPrimitiveResources
     {
         RHI::CPipeline::Ref Pipeline;
+        RHI::CDescriptorSet::Ref NodeDS;
     };
 
     RHI::CRenderPass::Ref RenderPass;

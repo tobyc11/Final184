@@ -4,7 +4,7 @@
 #include <map>
 #include <string>
 
-namespace Foreground
+namespace Pl
 {
 
 struct CShaderCompileEnvironment
@@ -19,7 +19,7 @@ struct CShaderCompileEnvironment
 class CShaderCompileWorker
 {
 public:
-    CShaderCompileWorker(CShaderCompileEnvironment env);
+    explicit CShaderCompileWorker(CShaderCompileEnvironment env);
 
     void SetOutputPath(std::string path) { OutputPath = std::move(path); }
     RHI::CShaderModule::Ref Compile();

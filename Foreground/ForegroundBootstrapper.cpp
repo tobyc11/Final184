@@ -12,6 +12,8 @@ void CForegroundBootstrapper::Init(RHI::CDevice::Ref device)
     bIsBootstrapped = true;
 
     RenderDevice = device;
+    RenderQueue = RenderDevice->CreateCommandQueue();
+    PipelangContext.SetDevice(RenderDevice);
 }
 
 void CForegroundBootstrapper::Shutdown()
@@ -20,8 +22,9 @@ void CForegroundBootstrapper::Shutdown()
         throw std::runtime_error("Foreground has not been initialized");
     bIsBootstrapped = false;
 
-    RenderDevice->GetImmediateContext()->Flush(true);
+    PipelangContext.SetDevice(nullptr);
     RenderDevice->WaitIdle();
+    RenderQueue.reset();
     RenderDevice.reset();
 }
 

@@ -1,3 +1,5 @@
+#include <utility>
+
 #include "Material.h"
 #include "Resources/ResourceManager.h"
 
@@ -144,7 +146,8 @@ void CMaterial::createPipeline(int w, int h)
             { location, attr.second.format, (uint32_t)attr.second.offset, bufferBinding });
     }
     
-    pipeline = device->CreatePipeline(desc);
+    pipeline = device->CreateManagedPipeline(desc);
+    DescriptorSets = pipeline->CreateDescriptorSets();
 }
 
 uint32_t CMaterial::getInputBufferBinding(std::string name) const
@@ -158,37 +161,37 @@ uint32_t CMaterial::getInputBufferBinding(std::string name) const
 void CMaterial::setAttribute(std::string id, RHI::EFormat format, size_t offset,
                              std::string buffer_name)
 {
-    vertexAttributes.insert_or_assign(id, CMaterialNamedAttribute{ id, format, offset, buffer_name });
+    vertexAttributes.insert_or_assign(id, CMaterialNamedAttribute{ id, format, offset, std::move(buffer_name) });
 }
 
-void CMaterial::setSampler(std::string id, RHI::CSampler::Ref obj)
+void CMaterial::setSampler(const std::string& id, RHI::CSampler::Ref obj)
 {
     if (ctx)
     {
         CPipelineResource& r = resources[id];
-        ctx->BindSampler(*obj, r.Set, r.Binding, 0);
+        DescriptorSets[r.Set]->BindSampler(std::move(obj), r.Binding, 0);
     }
 }
 
-void CMaterial::setImageView(std::string id, RHI::CImageView::Ref obj)
+void CMaterial::setImageView(const std::string& id, RHI::CImageView::Ref obj)
 {
     if (ctx)
     {
         CPipelineResource& r = resources[id];
-        ctx->BindImageView(*obj, r.Set, r.Binding, 0);
+        DescriptorSets[r.Set]->BindImageView(std::move(obj), r.Binding, 0);
     }
 }
 
-void CMaterial::setStruct(std::string id, size_t size, const void* obj)
+void CMaterial::setStruct(const std::string& id, size_t size, const void* obj)
 {
     if (ctx)
     {
         CPipelineResource& r = resources[id];
-        ctx->BindConstants(obj, size, r.Set, r.Binding, 0);
+        DescriptorSets[r.Set]->BindConstants(obj, size, r.Binding, 0);
     }
 }
 
-void CMaterial::setBuffer(std::string id, CBuffer& obj, size_t offset)
+void CMaterial::setBuffer(const std::string& id, CBuffer& obj, size_t offset)
 {
     if (ctx)
     {
@@ -199,21 +202,20 @@ void CMaterial::setBuffer(std::string id, CBuffer& obj, size_t offset)
 
 const std::vector<RHI::CImageView::Ref>& CMaterial::getRTViews() const { return renderTargetViews; }
 
-void CMaterial::beginRender(IImmediateContext::Ref c)
+void CMaterial::beginRender(const RHI::CCommandList::Ref& c)
 {
-    ctx = c;
+    PassCtx = c->CreateParallelRenderContext(renderPass, clearValues);
+    ctx = PassCtx->CreateRenderContext(0);
 
-    ctx->BeginRenderPass(*renderPass, clearValues);
-    ctx->BindPipeline(*pipeline);
+    ctx->BindRenderPipeline(*pipeline->Get());
 }
 
 void CMaterial::endRender()
 {
-    if (ctx)
-    {
-        ctx->EndRenderPass();
-    }
+    ctx->FinishRecording();
     ctx = nullptr;
+    PassCtx->FinishRecording();
+    PassCtx = nullptr;
 }
 
 void CMaterial::blit2d() const

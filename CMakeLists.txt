@@ -32,6 +32,7 @@ add_subdirectory(Foundation)
 add_subdirectory(Math)
 add_subdirectory(SPIRV-Cross)
 add_subdirectory(RHI)
+add_subdirectory(Pipelang)
 add_subdirectory(Foreground)
 add_subdirectory(App)
 

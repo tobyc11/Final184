@@ -1,11 +1,11 @@
 #include "ForegroundCommon.h"
-#include "Shader/ShaderCache.h"
 
 namespace Foreground
 {
 
 bool bIsBootstrapped = false;
 RHI::CDevice::Ref RenderDevice;
-CShaderFactory GlobalShaderFactory;
+RHI::CCommandQueue::Ref RenderQueue;
+Pl::CPipelangContext PipelangContext;
 
 } /* namespace Foreground */

@@ -4,7 +4,7 @@
 #include <memory>
 #include <unordered_map>
 
-namespace Foreground
+namespace Pl
 {
 
 // Main mechanism to track shaders

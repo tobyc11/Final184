@@ -5,7 +5,7 @@
 #include <mutex>
 #include <unordered_map>
 
-namespace Foreground
+namespace Pl
 {
 
 class CShaderCache : public tc::FNonCopyable
