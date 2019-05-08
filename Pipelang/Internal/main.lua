@@ -71,7 +71,7 @@ function BasicMaterial()
     Input "texture2D" "MetallicRoughnessTex";
     Output "vec4" "BaseColor";
     Output "float" "Metallic";
-    Output "float4" "Roughness";
+    Output "float" "Roughness";
 
     Code [[
         if (!UseTextures)
@@ -84,9 +84,20 @@ function BasicMaterial()
         {
             BaseColor = texture(sampler2D(BaseColorTex, GlobalLinearSampler), iTexCoord0) * BaseColorFactor;
             vec4 mr = texture(sampler2D(MetallicRoughnessTex, GlobalLinearSampler), iTexCoord0);
-            Metallic = mr * MetallicRoughness.g;
-            Roughness = mr * MetallicRoughness.b;
+            Metallic = mr.g * MetallicRoughness.g;
+            Roughness = mr.b * MetallicRoughness.b;
         }
+    ]]
+end
+
+function GBufferPS()
+    Input "vec4" "BaseColor";
+    Input "vec3" "iNormal";
+    Output "vec4" "Target0";
+    Output "vec4" "Target1";
+    Code [[
+        Target0 = vec4(BaseColor.rgb, 1.0);
+        Target1 = vec4(fma(iNormal, vec3(0.5), vec3(0.5)), 0.0);
     ]]
 end
 

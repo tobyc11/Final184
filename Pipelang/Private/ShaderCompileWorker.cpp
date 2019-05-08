@@ -10,7 +10,7 @@ CShaderCompileWorker::CShaderCompileWorker(CShaderCompileEnvironment env)
 {
 }
 
-RHI::CShaderModule::Ref CShaderCompileWorker::Compile()
+RHI::CShaderModule::Ref CShaderCompileWorker::Compile(const RHI::CDevice::Ref& device)
 {
     assert(!CompileEnv.ShaderStage.empty());
 
@@ -64,7 +64,7 @@ RHI::CShaderModule::Ref CShaderCompileWorker::Compile()
 
     std::vector<char> buffer(size);
     if (file.read(buffer.data(), size))
-        return nullptr; //return RenderDevice->CreateShaderModule(buffer.size(), buffer.data());
+        return device->CreateShaderModule(buffer.size(), buffer.data());
     return nullptr;
 }
 

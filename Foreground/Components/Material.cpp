@@ -210,6 +210,11 @@ void CMaterial::beginRender(const RHI::CCommandList::Ref& c)
     ctx->BindRenderPipeline(*pipeline->Get());
 }
 
+const RHI::IRenderContext::Ref& CMaterial::getContext() const
+{
+    return ctx;
+}
+
 void CMaterial::endRender()
 {
     ctx->FinishRecording();
@@ -222,6 +227,8 @@ void CMaterial::blit2d() const
 {
     if (ctx)
     {
+        for (uint32_t i = 0; i < DescriptorSets.size(); i++)
+            ctx->BindRenderDescriptorSet(i, *DescriptorSets[i]);
         ctx->Draw(3, 1, 0, 0);
     }
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <Device.h>
 #include <ShaderModule.h>
 #include <future>
 #include <map>
@@ -22,7 +23,7 @@ public:
     explicit CShaderCompileWorker(CShaderCompileEnvironment env);
 
     void SetOutputPath(std::string path) { OutputPath = std::move(path); }
-    RHI::CShaderModule::Ref Compile();
+    RHI::CShaderModule::Ref Compile(const RHI::CDevice::Ref& device);
     std::future<RHI::CShaderModule::Ref> CompileAsync();
 
 private:

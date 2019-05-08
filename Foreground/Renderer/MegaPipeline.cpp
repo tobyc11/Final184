@@ -45,7 +45,9 @@ namespace Foreground
         CreateRenderPasses();
         GBufferRenderer.SetRenderPass(GBufferPass);
 
-        RHI::CRHIImGuiBackend::Init(RenderDevice, gtao_visibility->getRenderPass());
+        RHI::CRHIImGuiBackend::Init(RenderDevice, gtao_color->getRenderPass());
+
+        PipelangContext.CreateLibrary("Internal").Parse();
     }
 
     void CMegaPipeline::SetSceneView(std::unique_ptr<CSceneView> sceneView)
@@ -127,7 +129,7 @@ namespace Foreground
 
         auto* drawData = ImGui::GetDrawData();
         if (drawData)
-            RHI::CRHIImGuiBackend::RenderDrawData(drawData, *ctx);
+            RHI::CRHIImGuiBackend::RenderDrawData(drawData, *gtao_color->getContext());
 
         gtao_color->endRender();
         cmdList->Commit();

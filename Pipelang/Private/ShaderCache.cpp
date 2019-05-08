@@ -3,10 +3,14 @@
 namespace Pl
 {
 
-CShaderCache& CShaderCache::Get()
+const RHI::CDevice::Ref& CShaderCache::GetDevice() const
 {
-    static CShaderCache singleton;
-    return singleton;
+    return Device;
+}
+
+void CShaderCache::SetDevice(const RHI::CDevice::Ref& device)
+{
+    Device = device;
 }
 
 void CShaderCache::InsertShader(const std::string& key, RHI::CShaderModule::Ref shaderModule)
@@ -35,8 +39,13 @@ RHI::CShaderModule::Ref CShaderCache::RetrieveOrCompileShader(const std::string&
     std::lock_guard<std::mutex> lk(ShaderCacheMutex);
     CShaderCompileWorker worker(std::move(env));
     worker.SetOutputPath(key + ".spv");
-    auto shader = worker.Compile();
+    auto shader = worker.Compile(Device);
+    if (!shader)
+    {
+        return nullptr;
+    }
     ShaderHashMap[key] = shader;
     return shader;
 }
+
 }

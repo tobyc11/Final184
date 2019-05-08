@@ -1,9 +1,13 @@
 #include "Pipelang.h"
+#include "ShaderCache.h"
 #include <PathTools.h>
 
 #include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
 #include <LuaBridge/Vector.h>
+
+#include <algorithm>
+#include <fstream>
 
 namespace Pl
 {
@@ -21,6 +25,8 @@ static void ExportClassesToLua(lua_State* L)
             .beginClass<CParameterBlock>("CParameterBlock")
                 .addConstructor<void (*)(void)>()
                 .addFunction("AddBinding", &CParameterBlock::AddBinding)
+                .addFunction("SetSetIndex", &CParameterBlock::SetSetIndex)
+                .addFunction("GetSetIndex", &CParameterBlock::GetSetIndex)
             .endClass()
             .beginClass<CPipelangLibrary>("CPipelangLibrary")
                 .addFunction("AddParameterBlock", &CPipelangLibrary::AddParameterBlock)
@@ -153,10 +159,23 @@ void CParameterBlock::AddBinding(const std::string& name,
     Bindings.emplace(name, b);
 }
 
+void CParameterBlock::SetSetIndex(uint32_t index)
+{
+    SetIndex = index;
+}
+
+uint32_t CParameterBlock::GetSetIndex() const
+{
+    return SetIndex;
+}
+
 void CParameterBlock::CreateDescriptorLayout(const RHI::CDevice::Ref& device)
 {
     if (!device)
+    {
         Layout = nullptr;
+        return;
+    }
 
     if (Layout)
         return;
@@ -233,8 +252,39 @@ CParameterBlock& CPipelangLibrary::GetParameterBlock(const std::string& name)
     return ParameterBlocks[name];
 }
 
-void CPipelangLibrary::GetPipeline(RHI::CPipelineDesc& desc, const std::vector<std::string>& stages)
+bool CPipelangLibrary::GetPipeline(RHI::CPipelineDesc& desc, const std::vector<std::string>& stages)
 {
+    // TODO: use 64bit hash key, not string concat
+    std::string key;
+    for (const std::string& s : stages)
+    {
+        key += "_";
+        key += s;
+    }
+    desc.VS = Parent->GetShaderCache()->RetrieveShader(key + "_VS");
+    desc.PS = Parent->GetShaderCache()->RetrieveShader(key + "_PS");
+    auto plIter = Parent->GetPipelineLayoutCache().find(key);
+    if (plIter != Parent->GetPipelineLayoutCache().end())
+        desc.Layout = plIter->second;
+    if (desc.VS && desc.PS && desc.Layout)
+        return true;
+
+    // Create pipeline layout from the specified parameter blocks
+    std::vector<RHI::CDescriptorSetLayout::Ref> layouts;
+    for (const std::string& s : stages)
+    {
+        auto pbIter = ParameterBlocks.find(s);
+        if (pbIter != ParameterBlocks.end())
+        {
+            const auto& pb = pbIter->second;
+            layouts.resize(std::max((uint32_t)layouts.size(), pb.GetSetIndex() + 1));
+            layouts[pb.GetSetIndex()] = pb.GetDescriptorSetLayout();
+        }
+    }
+    auto pipelineLayout = Parent->GetDevice()->CreatePipelineLayout(layouts);
+    Parent->GetPipelineLayoutCache()[key] = pipelineLayout;
+    desc.Layout = pipelineLayout;
+
     using namespace luabridge;
     int error;
 
@@ -268,10 +318,51 @@ void CPipelangLibrary::GetPipeline(RHI::CPipelineDesc& desc, const std::vector<s
         }
 
         LuaRef codegen = getGlobal(L, "codegen");
-        codegen["make_pipeline"](stages);
+        LuaRef success = codegen["make_pipeline"](stages);
+        if (!success.cast<bool>())
+        {
+            lua_close(L);
+            return false;
+        }
+
+        LuaRef result = codegen["result"];
+        std::string vs = result["vs"];
+        std::string ps = result["ps"];
+
+        std::ofstream ofs(key + "_VS.glsl");
+        ofs << vs;
+        ofs.close();
+
+        CShaderCompileEnvironment env;
+        env.MainSourcePath = key + "_VS.glsl";
+        env.ShaderStage = "vertex";
+
+        desc.VS = Parent->GetShaderCache()->RetrieveOrCompileShader(key + "_VS", env);
+
+        if (!desc.VS)
+        {
+            lua_close(L);
+            return false;
+        }
+
+        ofs.open(key + "_PS.glsl");
+        ofs << ps;
+        ofs.close();
+
+        env.MainSourcePath = key + "_PS.glsl";
+        env.ShaderStage = "fragment";
+
+        desc.PS = Parent->GetShaderCache()->RetrieveOrCompileShader(key + "_PS", env);
+
+        if (!desc.PS)
+        {
+            lua_close(L);
+            return false;
+        }
     }
 
     lua_close(L);
+    return true;
 }
 
 void CPipelangLibrary::AddVertexAttribs(const std::string& name, CVertexAttribs vertexAttribs)
@@ -287,7 +378,10 @@ void CPipelangLibrary::AddParameterBlock(const std::string& name, CParameterBloc
 CPipelangContext::CPipelangContext(RHI::CDevice::Ref device)
     : Device(std::move(device))
 {
+    ShaderCache = std::make_unique<CShaderCache>();
 }
+
+CPipelangContext::~CPipelangContext() = default;
 
 CPipelangLibrary& CPipelangContext::CreateLibrary(std::string sourceDir)
 {
@@ -306,10 +400,21 @@ CPipelangLibrary& CPipelangContext::GetLibrary(const std::string& sourceDir)
     return *LibraryByDir[sourceDir];
 }
 
+const std::unique_ptr<CShaderCache>& CPipelangContext::GetShaderCache() const
+{
+    return ShaderCache;
+}
+
+std::unordered_map<std::string, RHI::CPipelineLayout::Ref>& CPipelangContext::GetPipelineLayoutCache()
+{
+    return PipelineLayoutCache;
+}
+
 void CPipelangContext::NotifyDeviceChange()
 {
     for (auto& iter : LibraryByDir)
         iter.second->RecreateDeviceResources();
+    ShaderCache->SetDevice(Device);
 }
 
 }

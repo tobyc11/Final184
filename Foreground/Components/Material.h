@@ -89,6 +89,7 @@ public:
     const std::vector<RHI::CImageView::Ref>& getRTViews() const;
 
     void beginRender(const RHI::CCommandList::Ref& ctx);
+    const RHI::IRenderContext::Ref& getContext() const;
     void endRender();
 
     RHI::CRenderPass::Ref getRenderPass() const { return renderPass; }

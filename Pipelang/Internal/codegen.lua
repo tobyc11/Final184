@@ -119,6 +119,10 @@ function codegen.glsl_gen(stage_list, curr_stage)
         elseif obj.location and input then
             self.header = self.header ..
                 string.format("layout(location=%d) in ", obj.location)
+        elseif string.sub(name, 1, 6) == "Target" then
+            -- A hack for PS outputs
+            self.header = self.header ..
+                string.format("layout(location=%s) out ", string.sub(name, 7))
         end
 
         if obj.type ~= "uniform" then
@@ -185,17 +189,13 @@ function codegen.glsl_gen(stage_list, curr_stage)
             glsl_src:emit_stmts_main(stage.code)
         end
     end
-
-    print(glsl_src:get_string())
+    return glsl_src:get_string()
 end
 
 function codegen.make_pipeline(stage_list)
     codegen.annotate_parse_tree(stage_list)
-    print_table(parser.all_stages)
-    print()
-    print("=================Vertex Shader=================")
-    codegen.glsl_gen(stage_list, "vertex")
-    print()
-    print("=================Pixel Shader=================")
-    codegen.glsl_gen(stage_list, "pixel")
+    codegen.result = {}
+    codegen.result.vs = codegen.glsl_gen(stage_list, "vertex")
+    codegen.result.ps = codegen.glsl_gen(stage_list, "pixel")
+    return true
 end

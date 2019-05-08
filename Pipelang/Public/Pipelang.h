@@ -9,6 +9,9 @@
 namespace Pl
 {
 
+// Foward decls
+class CShaderCache;
+
 class CVertexAttribs
 {
 public:
@@ -53,12 +56,15 @@ public:
                     const std::string& type,
                     uint32_t count,
                     const std::string& stages);
+    void SetSetIndex(uint32_t index);
+    uint32_t GetSetIndex() const;
 
     void CreateDescriptorLayout(const RHI::CDevice::Ref& device);
 
 private:
     std::unordered_map<std::string, RHI::CDescriptorSetLayoutBinding> Bindings;
     RHI::CDescriptorSetLayout::Ref Layout;
+    uint32_t SetIndex = 0;
 };
 
 class CPipelangContext;
@@ -77,7 +83,7 @@ public:
     void AddVertexAttribs(const std::string& name, CVertexAttribs vertexAttribs);
     void AddParameterBlock(const std::string& name, CParameterBlock parameterBlock);
 
-    void GetPipeline(RHI::CPipelineDesc& desc, const std::vector<std::string>& stages);
+    bool GetPipeline(RHI::CPipelineDesc& desc, const std::vector<std::string>& stages);
 
 private:
     CPipelangContext* Parent;
@@ -91,9 +97,12 @@ class CPipelangContext
 {
 public:
     explicit CPipelangContext(RHI::CDevice::Ref device = nullptr);
+    ~CPipelangContext();
 
     CPipelangLibrary& CreateLibrary(std::string sourceDir);
     CPipelangLibrary& GetLibrary(const std::string& sourceDir);
+    const std::unique_ptr<CShaderCache>& GetShaderCache() const;
+    std::unordered_map<std::string, RHI::CPipelineLayout::Ref>& GetPipelineLayoutCache();
 
     const RHI::CDevice::Ref& GetDevice() const { return Device; }
     void SetDevice(const RHI::CDevice::Ref& device) { Device = device; NotifyDeviceChange(); }
@@ -103,6 +112,9 @@ public:
 private:
     RHI::CDevice::Ref Device;
     std::unordered_map<std::string, std::unique_ptr<CPipelangLibrary>> LibraryByDir;
+
+    std::unique_ptr<CShaderCache> ShaderCache;
+    std::unordered_map<std::string, RHI::CPipelineLayout::Ref> PipelineLayoutCache;
 };
 
 }

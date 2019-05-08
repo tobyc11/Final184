@@ -23,7 +23,9 @@ void CGBufferRenderer::RenderList(RHI::IRenderContext& context,
                                   const std::vector<CPrimitive*>& primitives)
 {
     GarbageCollectResourceCache();
-    Parent->BindEngineCommon(context);
+    if (modelMats.empty())
+        return;
+
     for (size_t i = 0; i < modelMats.size(); i++)
         Render(context, modelMats[i], primitives[i]);
 }
@@ -39,9 +41,12 @@ void CGBufferRenderer::PreparePrimitiveResources(std::shared_ptr<CPrimitive> pri
         if (auto basicMat = std::dynamic_pointer_cast<CBasicMaterial>(primitive->GetMaterial()))
         {
             RHI::CPipelineDesc desc;
-            lib.GetPipeline(desc, {"EngineCommon", "StandardTriMesh", "PerPrimitive",
+            bool ok = lib.GetPipeline(desc, {"EngineCommon", "StandardTriMesh", "PerPrimitive",
                                    "StaticMeshVS", "DefaultRasterizer", "BasicMaterialParams",
-                                   "BasicMaterial"});
+                                   "BasicMaterial", "GBufferPS"});
+
+            if (!ok)
+                return;
 
             desc.PrimitiveTopology = triMesh->GetPrimitiveTopology();
             desc.RasterizerState.CullMode = RHI::ECullModeFlags::None;
@@ -78,6 +83,8 @@ void CGBufferRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4&
     {
         PreparePrimitiveResources(primitive->shared_from_this());
         iter = CachedPrimitiveResources.find(primitive->weak_from_this());
+        if (iter == CachedPrimitiveResources.end())
+            return;
     }
 
     if (auto triMesh = std::dynamic_pointer_cast<CTriangleMesh>(primitive->GetShape()))
@@ -85,6 +92,8 @@ void CGBufferRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4&
         if (auto basicMat = std::dynamic_pointer_cast<CBasicMaterial>(primitive->GetMaterial()))
         {
             context.BindRenderPipeline(*iter->second.Pipeline);
+            Parent->BindEngineCommon(context);
+
             basicMat->Bind(context);
 
             PerPrimitiveConstants primitiveConstants;

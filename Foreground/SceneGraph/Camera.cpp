@@ -61,12 +61,14 @@ float CCamera::GetMagY() const { return MagY; }
 const tc::Matrix4& CCamera::GetMatrix() const
 {
     if (!bMatrixValid)
+    {
         if (bIsOrthographic)
             ProjectionMatrix = CalcOrtho();
         else if (FarClip >= 100000.f)
             ProjectionMatrix = CalcInfPerspective();
         else
             ProjectionMatrix = CalcPerspective();
+    }
     bMatrixValid = true;
     return ProjectionMatrix;
 }

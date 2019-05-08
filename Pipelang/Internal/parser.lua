@@ -55,6 +55,8 @@ local function add_stage(k, v)
             result.inputs = {}
             result.outputs = {}
 
+            result.set = rawget(v, "Set")
+
             local locationCounter = 0
             local usedLocations = {}
             local function nextLoc()
@@ -104,6 +106,7 @@ function parser.add_all_interface_stages()
     for name, block in pairs(interface_stages) do
         if block.subclass == stage_subclass.parameter_block then
             local pb = rt.CParameterBlock()
+            pb:SetSetIndex(block.set)
             for bindingName, output in pairs(block.outputs) do
                 pb:AddBinding(bindingName, output.binding, output.type, output.count, output.stages)
             end
