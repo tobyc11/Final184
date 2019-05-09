@@ -281,6 +281,7 @@ bool CPipelangLibrary::GetPipeline(RHI::CPipelineDesc& desc, const std::vector<s
 
     using namespace luabridge;
     int error;
+    bool retval = true;
 
     lua_State* L = luaL_newstate();
     luaL_openlibs(L);
@@ -339,8 +340,8 @@ bool CPipelangLibrary::GetPipeline(RHI::CPipelineDesc& desc, const std::vector<s
 
         if (!desc.VS)
         {
-            lua_close(L);
-            return false;
+            retval = false;
+            goto exit;
         }
 
         ofs.open(key + "_PS.glsl");
@@ -354,13 +355,14 @@ bool CPipelangLibrary::GetPipeline(RHI::CPipelineDesc& desc, const std::vector<s
 
         if (!desc.PS)
         {
-            lua_close(L);
-            return false;
+            retval = false;
+            goto exit;
         }
     }
 
+exit:
     lua_close(L);
-    return true;
+    return retval;
 }
 
 void CPipelangLibrary::AddVertexAttribs(const std::string& name, CVertexAttribs vertexAttribs)

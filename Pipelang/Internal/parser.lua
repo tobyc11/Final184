@@ -85,6 +85,7 @@ local function add_stage(k, v)
                 if not result.outputs[output.a1].set then
                     result.outputs[output.a1].set = 0
                 end
+				result.outputs[output.a1].format = rawget(output, "Format")
                 result.outputs[output.a1].count = 1
             end
         else

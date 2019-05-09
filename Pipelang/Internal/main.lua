@@ -121,7 +121,7 @@ function BasicZOnlyMaterial()
 end
 
 ParameterBlock "VoxelData" : Set(3) {
-    Output "image3D" "voxels" : Stages "P";
+    Output "image3D" "voxels" : Stages "P" : Format "rgba8";
 };
 
 function GBufferPS()

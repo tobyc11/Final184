@@ -111,9 +111,9 @@ function codegen.glsl_gen(stage_list, curr_stage)
 
     function glsl_src:emit_global_decl(name, obj, input)
 	    -- Ok this is full of hacks but whatever
-		if obj.binding and obj.type == "image3D" then
+		if obj.binding and string.sub(obj.type, 1, 5) == "image" then
             self.header = self.header ..
-                string.format("layout(set=%d, binding=%d) writeonly ", obj.set, obj.binding)
+                string.format("layout(set=%d, binding=%d, %s) uniform ", obj.set, obj.binding, obj.format)
         elseif obj.binding then
             self.header = self.header ..
                 string.format("layout(set=%d, binding=%d) uniform ", obj.set, obj.binding)
