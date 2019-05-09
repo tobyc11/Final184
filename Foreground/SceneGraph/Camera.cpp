@@ -101,6 +101,13 @@ tc::Matrix4 CCamera::CalcPerspective() const
     return tc::Matrix4(a, 0, 0, 0, 0, -b, 0, 0, 0, 0, c, d, 0, 0, -1, 0);
 }
 
-tc::Matrix4 CCamera::CalcOrtho() const { return tc::Matrix4(); }
+tc::Matrix4 CCamera::CalcOrtho() const
+{
+    float a = 1.0f / MagX;
+    float b = 1.0f / MagY;
+    float c = 1.0f / (NearClip - FarClip);
+    float d = NearClip / (NearClip - FarClip);
+    return tc::Matrix4(a, 0, 0, 0, 0, b, 0, 0, 0, 0, c, d, 0, 0, 0, 1);
+}
 
 } /* namespace Foreground */

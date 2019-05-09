@@ -129,8 +129,10 @@ void CMegaPipeline::Render()
     // Does culling and stuff
     SceneView->GetCameraNode()->GetScene()->UpdateAccelStructure();
     SceneView->PrepareToRender();
+    UpdateEngineCommon();
 
     ShadowSceneView->PrepareToRender();
+    UpdateEngineCommonShadow();
 
     auto cmdList = RenderQueue->CreateCommandList();
     cmdList->Enqueue();
@@ -151,8 +153,7 @@ void CMegaPipeline::Render()
     ctx->FinishRecording();
     passCtx->FinishRecording();
 
-    passCtx = cmdList->CreateParallelRenderContext(ZOnlyPass,
-                                                        { RHI::CClearValue(1.0f, 0) });
+    passCtx = cmdList->CreateParallelRenderContext(ZOnlyPass, { RHI::CClearValue(1.0f, 0) });
     ctx = passCtx->CreateRenderContext(0);
     ZOnlyRenderer.RenderList(*ctx, ShadowSceneView->GetVisiblePrimModelMatrix(),
                              ShadowSceneView->GetVisiblePrimitiveList());
@@ -200,6 +201,8 @@ void CMegaPipeline::Render()
     gtao_color->setImageView("t_shadow", ShadowDepth);
     gtao_color->blit2d();
 
+    // Render ImGui at the latest possible time so that we can still use ImGui inside renderer
+    ImGui::Render();
     auto* drawData = ImGui::GetDrawData();
     if (drawData)
         RHI::CRHIImGuiBackend::RenderDrawData(drawData, *gtao_color->getContext());
@@ -240,10 +243,8 @@ void CMegaPipeline::UpdateEngineCommon()
 
 void CMegaPipeline::BindEngineCommon(RHI::IRenderContext& context)
 {
-    UpdateEngineCommon();
     context.BindRenderDescriptorSet(0, *EngineCommonDS);
 }
-
 
 void CMegaPipeline::UpdateEngineCommonShadow()
 {
@@ -272,7 +273,6 @@ void CMegaPipeline::UpdateEngineCommonShadow()
 
 void CMegaPipeline::BindEngineCommonShadow(RHI::IRenderContext& context)
 {
-    UpdateEngineCommonShadow();
     context.BindRenderDescriptorSet(0, *EngineCommonShadowDS);
 }
 

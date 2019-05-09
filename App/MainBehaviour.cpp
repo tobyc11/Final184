@@ -41,10 +41,12 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
     self->directionalLightNode->SetName("directionalLightNode");
     self->lightDirectional = std::make_shared<CLight>(tc::Color(1.0, 0.95, 0.87), 1.0, ELightType::Directional);
     self->directionalLightNode->AddLight(self->lightDirectional);
-    self->directionalLightNode->Translate(tc::Vector3(0.0, 5.0, 0.0), ETransformSpace::World);
     self->directionalLightNode->Rotate(tc::Quaternion(-90.0, 0.0, 0.0), ETransformSpace::World);
+    self->directionalLightNode->Translate(tc::Vector3(0.0, 20.0, 0.0), ETransformSpace::World);
     self->shadowCamera = std::make_shared<CCamera>(true);
     self->shadowCamera->SetAspectRatio(1.0);
+    self->shadowCamera->SetMagX(20.0f);
+    self->shadowCamera->SetMagY(20.0f);
     self->directionalLightNode->SetCamera(self->shadowCamera);
 
     CglTFSceneImporter importer(self->scene, *game->device);
@@ -144,7 +146,6 @@ static void render_tick(std::shared_ptr<CBehaviour> selfref, Game* game)
     self->scene->ShowInspectorImGui();
     CGameObject::ShowInspectorImGui(game->root);
 
-    ImGui::Render();
     self->renderPipeline->Render();
 }
 

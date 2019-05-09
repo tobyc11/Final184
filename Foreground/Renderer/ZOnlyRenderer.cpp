@@ -1,5 +1,3 @@
-#include <utility>
-
 #include "ZOnlyRenderer.h"
 #include "ForegroundCommon.h"
 #include "MegaPipeline.h"
@@ -19,8 +17,8 @@ void CZOnlyRenderer::SetRenderPass(RHI::CRenderPass::Ref renderPass, uint32_t su
 }
 
 void CZOnlyRenderer::RenderList(RHI::IRenderContext& context,
-                                  const std::vector<tc::Matrix3x4>& modelMats,
-                                  const std::vector<CPrimitive*>& primitives)
+                                const std::vector<tc::Matrix3x4>& modelMats,
+                                const std::vector<CPrimitive*>& primitives)
 {
     GarbageCollectResourceCache();
     if (modelMats.empty())
@@ -41,9 +39,10 @@ void CZOnlyRenderer::PreparePrimitiveResources(std::shared_ptr<CPrimitive> primi
         if (auto basicMat = std::dynamic_pointer_cast<CBasicMaterial>(primitive->GetMaterial()))
         {
             RHI::CPipelineDesc desc;
-            bool ok = lib.GetPipeline(desc, {"EngineCommon", "StandardTriMesh", "PerPrimitive",
-                                   "StaticMeshZOnlyVS", "DefaultRasterizer", "BasicMaterialParams",
-                                   "BasicZOnlyMaterial"});
+            bool ok = lib.GetPipeline(desc,
+                                      { "EngineCommon", "StandardTriMesh", "PerPrimitive",
+                                        "StaticMeshZOnlyVS", "DefaultRasterizer",
+                                        "BasicMaterialParams", "BasicZOnlyMaterial" });
 
             if (!ok)
                 return;
@@ -51,8 +50,9 @@ void CZOnlyRenderer::PreparePrimitiveResources(std::shared_ptr<CPrimitive> primi
             desc.PrimitiveTopology = triMesh->GetPrimitiveTopology();
             desc.RasterizerState.CullMode = RHI::ECullModeFlags::None;
             desc.RenderPass = RenderPass;
-            desc.Subpass = 0;;
-            triMesh->PipelineSetVertexInputDesc(desc, lib.GetVertexAttribs("StandardTriMesh").GetAttributesByLocation());
+            desc.Subpass = 0;
+            triMesh->PipelineSetVertexInputDesc(
+                desc, lib.GetVertexAttribs("StandardTriMesh").GetAttributesByLocation());
             auto pipeline = RenderDevice->CreatePipeline(desc);
 
             CPrimitiveResources resources;
@@ -76,7 +76,7 @@ void CZOnlyRenderer::GarbageCollectResourceCache()
 }
 
 void CZOnlyRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4& modelMat,
-                              CPrimitive* primitive)
+                            CPrimitive* primitive)
 {
     auto iter = CachedPrimitiveResources.find(primitive->weak_from_this());
     if (iter == CachedPrimitiveResources.end())
@@ -100,7 +100,8 @@ void CZOnlyRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4& m
             primitiveConstants.ModelMat = modelMat.ToMatrix4().Transpose();
             auto& lib = PipelangContext.GetLibrary("Internal");
             auto& pb = lib.GetParameterBlock("PerPrimitive");
-            pb.BindConstants(iter->second.NodeDS, &primitiveConstants, sizeof(primitiveConstants), "PerPrimitiveConstants");
+            pb.BindConstants(iter->second.NodeDS, &primitiveConstants, sizeof(primitiveConstants),
+                             "PerPrimitiveConstants");
             context.BindRenderDescriptorSet(2, *iter->second.NodeDS);
 
             triMesh->Draw(context);
