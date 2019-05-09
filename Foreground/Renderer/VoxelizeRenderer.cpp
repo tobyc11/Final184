@@ -1,5 +1,5 @@
-#include "GBufferRenderer.h"
 #include "ForegroundCommon.h"
+#include "GBufferRenderer.h"
 #include "MegaPipeline.h"
 
 namespace Foreground
@@ -17,8 +17,8 @@ void CVoxelizeRenderer::SetRenderPass(RHI::CRenderPass::Ref renderPass, uint32_t
 }
 
 void CVoxelizeRenderer::RenderList(RHI::IRenderContext& context,
-                                  const std::vector<tc::Matrix3x4>& modelMats,
-                                  const std::vector<CPrimitive*>& primitives)
+                                   const std::vector<tc::Matrix3x4>& modelMats,
+                                   const std::vector<CPrimitive*>& primitives)
 {
     GarbageCollectResourceCache();
     if (modelMats.empty())
@@ -77,7 +77,7 @@ void CVoxelizeRenderer::GarbageCollectResourceCache()
 }
 
 void CVoxelizeRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4& modelMat,
-                              CPrimitive* primitive)
+                               CPrimitive* primitive)
 {
     auto iter = CachedPrimitiveResources.find(primitive->weak_from_this());
     if (iter == CachedPrimitiveResources.end())
@@ -89,8 +89,12 @@ void CVoxelizeRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4
     }
 
     auto& lib = PipelangContext.GetLibrary("Internal");
-    auto& pb = lib.GetParameterBlock("VoxelData");
-    pb.BindImageView(iter->second.NodeDS, Parent->getVoxelsImageView(), "voxels", 0);
+    if (!VoxelDS)
+    {
+        auto& pb = lib.GetParameterBlock("VoxelData");
+        VoxelDS = pb.CreateDescriptorSet();
+        pb.BindImageView(VoxelDS, Parent->getVoxelsImageView(), "voxels");
+    }
 
     if (auto triMesh = std::dynamic_pointer_cast<CTriangleMesh>(primitive->GetShape()))
     {
@@ -106,11 +110,12 @@ void CVoxelizeRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4
             PerPrimitiveConstants primitiveConstants;
             primitiveConstants.ModelMat = modelMat.ToMatrix4().Transpose();
             primitiveConstants.NormalMat = modelMat.ToMatrix3().Inverse();
-            auto& lib = PipelangContext.GetLibrary("Internal");
             auto& pb = lib.GetParameterBlock("PerPrimitive");
             pb.BindConstants(iter->second.NodeDS, &primitiveConstants, sizeof(primitiveConstants),
                              "PerPrimitiveConstants");
             context.BindRenderDescriptorSet(2, *iter->second.NodeDS);
+
+            context.BindRenderDescriptorSet(3, *VoxelDS);
 
             triMesh->Draw(context);
         }

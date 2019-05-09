@@ -48,6 +48,8 @@ private:
              std::owner_less<std::weak_ptr<CPrimitive>>>
         CachedPrimitiveResources;
 
+    RHI::CDescriptorSet::Ref VoxelDS;
+
     // Temporary render flags
     bool BoundSet0 = false;
 };

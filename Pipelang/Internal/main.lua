@@ -140,7 +140,7 @@ function VoxelPS()
     Input "vec3" "iNormal";
     Input "image3D" "voxels";
     Code [[
-        imageStore(voxels, ivec3(gl_FragCoord.xyz), BaseColor.rgb);
+        imageStore(voxels, ivec3(gl_FragCoord.xyz), BaseColor.rgba);
     ]]
 end
 
