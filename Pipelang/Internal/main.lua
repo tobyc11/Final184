@@ -36,7 +36,7 @@ function StaticMeshVS()
     Output "vec2" "iTexCoord0";
     Code [[
         vec4 pos = ModelMat * vec4(Position, 1);
-        gl_Position = ProjMat * ViewMat * ModelMat * pos;
+        gl_Position = ProjMat * ViewMat * pos;
         iPosition = (pos / pos.w).xyz;
         iTexCoord0 = TexCoord0;
         iNormal = normalize(mat3(ViewMat) * mat3(ModelMat) * Normal);
