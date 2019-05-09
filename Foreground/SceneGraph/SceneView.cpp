@@ -1,5 +1,6 @@
 #include "SceneView.h"
 #include <algorithm>
+#include <stack>
 
 namespace Foreground
 {
@@ -22,11 +23,30 @@ void CSceneView::PrepareToRender()
     auto* sceneAccel = scene->GetAccelStructure();
     auto camera = CameraNode->GetCamera();
 
-    auto frustum = camera->GetFrustum().Transformed(CameraNode->GetWorldTransform());
-    std::list<CSceneNode*> frustumCull;
-    sceneAccel->Intersect(frustum, frustumCull);
-    VisibleNodeList.reserve(frustumCull.size());
-    VisibleNodeList.insert(VisibleNodeList.begin(), frustumCull.begin(), frustumCull.end());
+    if (0)
+    {
+        // Frustum culling enabled
+        auto frustum = camera->GetFrustum().Transformed(CameraNode->GetWorldTransform());
+        std::list<CSceneNode*> frustumCull;
+        sceneAccel->Intersect(frustum, frustumCull);
+        VisibleNodeList.reserve(frustumCull.size());
+        VisibleNodeList.insert(VisibleNodeList.begin(), frustumCull.begin(), frustumCull.end());
+    }
+    else
+    {
+        std::stack<CSceneNode*> dfsStack;
+        dfsStack.push(scene->GetRootNode());
+        while (!dfsStack.empty())
+        {
+            CSceneNode* node = dfsStack.top();
+            dfsStack.pop();
+            VisibleNodeList.push_back(node);
+            for (CSceneNode* child : node->GetChildren())
+            {
+                dfsStack.push(child);
+            }
+        }
+    }
 
     for (CSceneNode* node : VisibleNodeList)
     {
