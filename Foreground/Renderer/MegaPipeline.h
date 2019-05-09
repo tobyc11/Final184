@@ -1,6 +1,7 @@
 #pragma once
 #include "ForegroundCommon.h"
 #include "GBufferRenderer.h"
+#include "ZOnlyRenderer.h"
 #include "SceneGraph/SceneView.h"
 #include <Pipeline.h>
 #include <Resources.h>
@@ -24,7 +25,7 @@ class CMegaPipeline
 public:
     explicit CMegaPipeline(RHI::CSwapChain::Ref swapChain);
 
-    void SetSceneView(std::unique_ptr<CSceneView> sceneView);
+    void SetSceneView(std::unique_ptr<CSceneView> sceneView, std::unique_ptr<CSceneView> shadowView);
 
     void Resize();
     void Render();
@@ -33,21 +34,28 @@ public:
     void UpdateEngineCommon();
     void BindEngineCommon(RHI::IRenderContext& context);
 
+    void UpdateEngineCommonShadow();
+    void BindEngineCommonShadow(RHI::IRenderContext& context);
+
 protected:
     void CreateRenderPasses();
     void CreateGBufferPass(uint32_t width, uint32_t height);
+    void CreateShadowBufferPass();
     void CreateScreenPass();
 
 private:
     RHI::CSwapChain::Ref SwapChain;
     std::unique_ptr<CSceneView> SceneView;
+    std::unique_ptr<CSceneView> ShadowSceneView;
 
     RHI::CImageView::Ref GBuffer0;
     RHI::CImageView::Ref GBuffer1;
     // RHI::CImageView::Ref GBuffer2;
     // RHI::CImageView::Ref GBuffer3;
     RHI::CImageView::Ref GBufferDepth;
+    RHI::CImageView::Ref ShadowDepth;
     RHI::CRenderPass::Ref GBufferPass;
+    RHI::CRenderPass::Ref ZOnlyPass;
 
     RHI::CSampler::Ref GlobalNiceSampler;
     RHI::CSampler::Ref GlobalLinearSampler;
@@ -55,6 +63,7 @@ private:
     RHI::CPipeline::Ref BlitPipeline;
 
     CGBufferRenderer GBufferRenderer;
+    CZOnlyRenderer ZOnlyRenderer;
 
     std::shared_ptr<CMaterial> gtao_visibility;
     std::shared_ptr<CMaterial> gtao_blur;
@@ -63,6 +72,7 @@ private:
     std::shared_ptr<CMaterial> lighting_deferred;
 
     RHI::CDescriptorSet::Ref EngineCommonDS;
+    RHI::CDescriptorSet::Ref EngineCommonShadowDS;
 };
 
 } /* namespace Foreground */

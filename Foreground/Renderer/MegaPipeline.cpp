@@ -27,6 +27,7 @@ static RHI::CShaderModule::Ref LoadSPIRV(RHI::CDevice::Ref device, const std::st
 CMegaPipeline::CMegaPipeline(RHI::CSwapChain::Ref swapChain)
     : SwapChain(swapChain)
     , GBufferRenderer(this)
+    , ZOnlyRenderer(this)
 {
     RHI::CSamplerDesc desc;
     desc.AddressModeU = RHI::ESamplerAddressMode::Wrap;
@@ -44,15 +45,18 @@ CMegaPipeline::CMegaPipeline(RHI::CSwapChain::Ref swapChain)
 
     CreateRenderPasses();
     GBufferRenderer.SetRenderPass(GBufferPass);
+    ZOnlyRenderer.SetRenderPass(ZOnlyPass);
 
     RHI::CRHIImGuiBackend::Init(RenderDevice, gtao_color->getRenderPass());
 
     PipelangContext.CreateLibrary("Internal").Parse();
 }
 
-void CMegaPipeline::SetSceneView(std::unique_ptr<CSceneView> sceneView)
+void CMegaPipeline::SetSceneView(std::unique_ptr<CSceneView> sceneView,
+                                 std::unique_ptr<CSceneView> shadowView)
 {
     SceneView = std::move(sceneView);
+    ShadowSceneView = std::move(shadowView);
 }
 
 void CMegaPipeline::Resize()
@@ -68,18 +72,10 @@ void CMegaPipeline::Resize()
     gtao_visibility = nullptr;
     gtao_blur = nullptr;
     gtao_color = nullptr;
+    lighting_deferred = nullptr;
 
     CreateGBufferPass(w, h);
     CreateScreenPass();
-}
-
-void getAllLights(std::vector<std::shared_ptr<CLight>>& lights, CSceneNode* root)
-{
-    lights.insert(lights.end(), root->GetLights().begin(), root->GetLights().end());
-    for (CSceneNode* child : root->GetChildren())
-    {
-        getAllLights(lights, child);
-    }
 }
 
 struct alignas(16) PerLightConstants
@@ -94,6 +90,31 @@ struct alignas(16) LightLists
     int numLights;
 };
 
+void getAllLights(LightLists* lightsPoint, LightLists* lightsDirectioanl, CSceneNode* root)
+{
+    tc::Vector3 position = root->GetWorldPosition();
+    tc::Vector3 direction = root->GetWorldTransform() * tc::Vector4(0.0, 0.0, -1.0, 0.0);
+    for (auto L : root->GetLights())
+    {
+        if (L->getType() == ELightType::Point)
+        {
+            lightsPoint->lights[lightsPoint->numLights] = { L->getLuminance(), position };
+            lightsPoint->numLights++;
+        }
+        if (L->getType() == ELightType::Directional)
+        {
+            lightsDirectioanl->lights[lightsDirectioanl->numLights] = { L->getLuminance(),
+                                                                        direction };
+            lightsDirectioanl->numLights++;
+        }
+    }
+
+    for (CSceneNode* child : root->GetChildren())
+    {
+        getAllLights(lightsPoint, lightsDirectioanl, child);
+    }
+}
+
 void CMegaPipeline::Render()
 {
     // Or render some test image?
@@ -105,39 +126,36 @@ void CMegaPipeline::Render()
         return;
     }
 
-    UpdateEngineCommon();
-
     // Does culling and stuff
     SceneView->GetCameraNode()->GetScene()->UpdateAccelStructure();
     SceneView->PrepareToRender();
+
+    ShadowSceneView->PrepareToRender();
 
     auto cmdList = RenderQueue->CreateCommandList();
     cmdList->Enqueue();
 
     CSceneNode* root = SceneView->GetCameraNode()->GetScene()->GetRootNode();
-    std::vector<std::shared_ptr<CLight>> lights;
-    getAllLights(lights, root);
+    LightLists pointLightLists, directionalLightLists;
+    pointLightLists.numLights = 0;
+    directionalLightLists.numLights = 0;
+    getAllLights(&pointLightLists, &directionalLightLists, root);
 
-    LightLists lightLists;
-
-    int numLights = 0;
-    for (auto L : lights)
-    {
-        lightLists.lights[numLights] = { L->getLuminance(), tc::Vector3 { 0.0, 1.0, 0.0 } };
-        numLights++;
-
-        std::cout << "Create Light of luminance " << L->getLuminance().r << " "
-                  << L->getLuminance().g << " " << L->getLuminance().b << std::endl;
-    }
-    lightLists.numLights = numLights;
-
-    auto passCtx = cmdList -> CreateParallelRenderContext(GBufferPass,
-                                                          { RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f),
-                                                            RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f),
-                                                            RHI::CClearValue(1.0f, 0) });
-    auto ctx = passCtx -> CreateRenderContext(0);
+    auto passCtx = cmdList->CreateParallelRenderContext(GBufferPass,
+                                                        { RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f),
+                                                          RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f),
+                                                          RHI::CClearValue(1.0f, 0) });
+    auto ctx = passCtx->CreateRenderContext(0);
     GBufferRenderer.RenderList(*ctx, SceneView->GetVisiblePrimModelMatrix(),
                                SceneView->GetVisiblePrimitiveList());
+    ctx->FinishRecording();
+    passCtx->FinishRecording();
+
+    passCtx = cmdList->CreateParallelRenderContext(ZOnlyPass,
+                                                        { RHI::CClearValue(1.0f, 0) });
+    ctx = passCtx->CreateRenderContext(0);
+    ZOnlyRenderer.RenderList(*ctx, ShadowSceneView->GetVisiblePrimModelMatrix(),
+                             ShadowSceneView->GetVisiblePrimitiveList());
     ctx->FinishRecording();
     passCtx->FinishRecording();
 
@@ -169,7 +187,8 @@ void CMegaPipeline::Render()
     lighting_deferred->setImageView("t_normals", GBuffer1);
     lighting_deferred->setImageView("t_depth", GBufferDepth);
     lighting_deferred->setStruct("GlobalConstants", sizeof(GlobalConstants), &constants);
-    lighting_deferred->setStruct("Lights", sizeof(LightLists), &lightLists);
+    lighting_deferred->setStruct("pointLights", sizeof(LightLists), &pointLightLists);
+    lighting_deferred->setStruct("directionalLights", sizeof(LightLists), &directionalLightLists);
     lighting_deferred->blit2d();
     lighting_deferred->endRender();
 
@@ -178,6 +197,7 @@ void CMegaPipeline::Render()
     gtao_color->setImageView("t_albedo", GBuffer0);
     gtao_color->setImageView("t_ao", gtao_blur->getRTViews()[0]);
     gtao_color->setImageView("t_lighting", lighting_deferred->getRTViews()[0]);
+    gtao_color->setImageView("t_shadow", ShadowDepth);
     gtao_color->blit2d();
 
     auto* drawData = ImGui::GetDrawData();
@@ -188,6 +208,7 @@ void CMegaPipeline::Render()
     cmdList->Commit();
 
     SceneView->FrameFinished();
+    ShadowSceneView->FrameFinished();
 
     RHI::CSwapChainPresentInfo info;
     SwapChain->Present(info);
@@ -219,15 +240,73 @@ void CMegaPipeline::UpdateEngineCommon()
 
 void CMegaPipeline::BindEngineCommon(RHI::IRenderContext& context)
 {
+    UpdateEngineCommon();
     context.BindRenderDescriptorSet(0, *EngineCommonDS);
+}
+
+
+void CMegaPipeline::UpdateEngineCommonShadow()
+{
+    if (!EngineCommonShadowDS)
+    {
+        auto& lib = PipelangContext.GetLibrary("Internal");
+        auto& pb = lib.GetParameterBlock("EngineCommon");
+        EngineCommonShadowDS = pb.CreateDescriptorSet();
+    }
+
+    auto& lib = PipelangContext.GetLibrary("Internal");
+    auto& pb = lib.GetParameterBlock("EngineCommon");
+    pb.BindSampler(EngineCommonShadowDS, GlobalNiceSampler, "GlobalNiceSampler");
+    pb.BindSampler(EngineCommonShadowDS, GlobalLinearSampler, "GlobalLinearSampler");
+    pb.BindSampler(EngineCommonShadowDS, GlobalNearestSampler, "GlobalNearestSampler");
+
+    GlobalConstants constants;
+    constants.CameraPos = tc::Vector4(ShadowSceneView->GetCameraNode()->GetWorldPosition(), 1.0f);
+    constants.ViewMat =
+        ShadowSceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4().Transpose();
+    constants.ProjMat = ShadowSceneView->GetCameraNode()->GetCamera()->GetMatrix().Transpose();
+    constants.InvProj =
+        ShadowSceneView->GetCameraNode()->GetCamera()->GetMatrix().Inverse().Transpose();
+    pb.BindConstants(EngineCommonShadowDS, &constants, sizeof(GlobalConstants), "GlobalConstants");
+}
+
+void CMegaPipeline::BindEngineCommonShadow(RHI::IRenderContext& context)
+{
+    UpdateEngineCommonShadow();
+    context.BindRenderDescriptorSet(0, *EngineCommonShadowDS);
 }
 
 void CMegaPipeline::CreateRenderPasses()
 {
     uint32_t w, h;
     SwapChain->GetSize(w, h);
+    CreateShadowBufferPass();
     CreateGBufferPass(w, h);
     CreateScreenPass();
+}
+
+void CMegaPipeline::CreateShadowBufferPass()
+{
+    using namespace RHI;
+
+    auto depthImage = RenderDevice->CreateImage2D(
+        EFormat::D32_SFLOAT_S8_UINT, EImageUsageFlags::DepthStencil | EImageUsageFlags::Sampled,
+        2048, 2048);
+
+    CImageViewDesc depthViewDesc;
+    depthViewDesc.Format = EFormat::D32_SFLOAT_S8_UINT;
+    depthViewDesc.Type = EImageViewType::View2D;
+    depthViewDesc.DepthStencilAspect = EDepthStencilAspectFlags::Depth;
+    depthViewDesc.Range.Set(0, 1, 0, 1);
+    ShadowDepth = RenderDevice->CreateImageView(depthViewDesc, depthImage);
+
+    CRenderPassDesc rpDesc;
+    rpDesc.AddAttachment(ShadowDepth, EAttachmentLoadOp::Clear, EAttachmentStoreOp::Store);
+    rpDesc.NextSubpass().SetDepthStencilAttachment(0);
+    rpDesc.Width = 2048;
+    rpDesc.Height = 2048;
+    rpDesc.Layers = 1;
+    ZOnlyPass = RenderDevice->CreateRenderPass(rpDesc);
 }
 
 void CMegaPipeline::CreateGBufferPass(uint32_t width, uint32_t height)
@@ -311,8 +390,8 @@ void CMegaPipeline::CreateScreenPass()
     gtao_color->renderTargets = { { fbImage } };
     gtao_color->createPipeline(width, height);
 
-    lighting_deferred = std::shared_ptr<CMaterial>(new CMaterial(
-        RenderDevice, "Common/Quad.vert.spv", "Lighting/aggregateLights.frag.spv"));
+    lighting_deferred = std::shared_ptr<CMaterial>(
+        new CMaterial(RenderDevice, "Common/Quad.vert.spv", "Lighting/aggregateLights.frag.spv"));
 
     lighting_deferred->renderTargets = { { lightingImage, EFormat::R16G16B16A16_SFLOAT } };
     lighting_deferred->createPipeline(width, height);

@@ -31,19 +31,29 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
     self->cameraNode->SetCamera(self->camera);
     self->cameraNode->Translate(tc::Vector3(0, 0.5, 0), ETransformSpace::World);
 
-    self->mainLightNode = self->scene->GetRootNode()->CreateChildNode();
-    self->mainLightNode->SetName("mainLightNode");
-    self->light = std::make_shared<CLight>(tc::Color(1.0, 1.0, 1.0), 10.0);
-    self->mainLightNode->AddLight(self->light);
-    self->mainLightNode->Translate(tc::Vector3(0.0, 20.0, 0.0), ETransformSpace::World);
-    self->mainLightNode->Rotate(tc::Quaternion(0.0, 90.0, 0.0), ETransformSpace::World);
+    self->pointLightNode = self->scene->GetRootNode()->CreateChildNode();
+    self->pointLightNode->SetName("pointLightNode");
+    self->lightPoint = std::make_shared<CLight>(tc::Color(0.1, 1.0, 0.6), 5.0);
+    self->pointLightNode->AddLight(self->lightPoint);
+    self->pointLightNode->Translate(tc::Vector3(0.0, 2.0, 0.0), ETransformSpace::World);
+    
+    self->directionalLightNode = self->scene->GetRootNode()->CreateChildNode();
+    self->directionalLightNode->SetName("directionalLightNode");
+    self->lightDirectional = std::make_shared<CLight>(tc::Color(1.0, 0.95, 0.87), 1.0, ELightType::Directional);
+    self->directionalLightNode->AddLight(self->lightDirectional);
+    self->directionalLightNode->Translate(tc::Vector3(0.0, 5.0, 0.0), ETransformSpace::World);
+    self->directionalLightNode->Rotate(tc::Quaternion(-90.0, 0.0, 0.0), ETransformSpace::World);
+    self->shadowCamera = std::make_shared<CCamera>(true);
+    self->shadowCamera->SetAspectRatio(1.0);
+    self->directionalLightNode->SetCamera(self->shadowCamera);
 
     CglTFSceneImporter importer(self->scene, *game->device);
     importer.ImportFile(CResourceManager::Get().FindFile("Models/Sponza.gltf"));
 
     self->renderPipeline =
         CForegroundBootstrapper::CreateRenderPipeline(game->swapChain, EForegroundPipeline::Mega);
-    self->renderPipeline->SetSceneView(std::make_unique<CSceneView>(self->cameraNode));
+    self->renderPipeline->SetSceneView(std::make_unique<CSceneView>(self->cameraNode),
+                                       std::make_unique<CSceneView>(self->directionalLightNode));
 
     self->scene->UpdateAccelStructure();
 }

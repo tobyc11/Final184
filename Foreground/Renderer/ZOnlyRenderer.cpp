@@ -92,7 +92,7 @@ void CZOnlyRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4& m
         if (auto basicMat = std::dynamic_pointer_cast<CBasicMaterial>(primitive->GetMaterial()))
         {
             context.BindRenderPipeline(*iter->second.Pipeline);
-            Parent->BindEngineCommon(context);
+            Parent->BindEngineCommonShadow(context);
 
             basicMat->Bind(context);
 
