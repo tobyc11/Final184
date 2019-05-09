@@ -36,10 +36,22 @@ function StaticMeshVS()
     Output "vec2" "iTexCoord0";
     Code [[
         vec4 pos = ModelMat * vec4(Position, 1);
-        gl_Position = ProjMat * ViewMat * ModelMat * pos;
+        gl_Position = ProjMat * ViewMat * pos;
         iPosition = (pos / pos.w).xyz;
         iTexCoord0 = TexCoord0;
         iNormal = normalize(mat3(ViewMat) * mat3(ModelMat) * Normal);
+    ]];
+end
+
+function StaticMeshZOnlyVS()
+    Input "vec3" "Position";
+    Input "vec2" "TexCoord0";
+    Input "uniform" "GlobalConstants";
+    Input "uniform" "PerPrimitiveConstants";
+    Output "vec2" "iTexCoord0";
+    Code [[
+        gl_Position = ProjMat * ViewMat * ModelMat * vec4(Position, 1);
+        iTexCoord0 = TexCoord0;
     ]];
 end
 
@@ -83,9 +95,27 @@ function BasicMaterial()
         else
         {
             BaseColor = texture(sampler2D(BaseColorTex, GlobalLinearSampler), iTexCoord0) * BaseColorFactor;
+
+            if (BaseColor.a < 0.05) discard;
+
             vec4 mr = texture(sampler2D(MetallicRoughnessTex, GlobalLinearSampler), iTexCoord0);
             Metallic = mr.g * MetallicRoughness.g;
             Roughness = mr.b * MetallicRoughness.b;
+        }
+    ]]
+end
+
+function BasicZOnlyMaterial()
+    Input "vec2" "iTexCoord0";
+    Input "uniform" "MaterialConstants";
+    Input "texture2D" "BaseColorTex";
+
+    Code [[
+        if (UseTextures) {
+            float alpha = texture(sampler2D(BaseColorTex, GlobalLinearSampler), iTexCoord0).a * BaseColorFactor.a;
+            if (alpha < 0.05) {
+                discard;
+            }
         }
     ]]
 end

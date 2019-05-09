@@ -8,9 +8,11 @@ layout(location = 0) out vec4 outColor;
 layout(set = 1, binding = 0) uniform sampler s;
 layout(set = 1, binding = 1) uniform texture2D t_albedo;
 layout(set = 1, binding = 2) uniform texture2D t_ao;
+layout(set = 1, binding = 3) uniform texture2D t_lighting;
 
 void main() {
-    vec3 color = texture(sampler2D(t_albedo, s), inUV).xyz;
-    vec3 ao = texture(sampler2D(t_ao, s), inUV).xxx;
-    outColor = vec4(color * ao, 1.0);
+    vec3 color = texture(sampler2D(t_albedo, s), inUV).rgb;
+    vec3 ao = texture(sampler2D(t_ao, s), inUV).rrr;
+    vec3 lighting = texture(sampler2D(t_lighting, s), inUV).rgb;
+    outColor = vec4(color * ao * lighting, 1.0);
 }

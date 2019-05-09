@@ -60,6 +60,8 @@ private:
     std::shared_ptr<CMaterial> gtao_blur;
     std::shared_ptr<CMaterial> gtao_color;
 
+    std::shared_ptr<CMaterial> lighting_deferred;
+
     RHI::CDescriptorSet::Ref EngineCommonDS;
 };
 

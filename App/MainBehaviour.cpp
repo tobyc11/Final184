@@ -31,6 +31,13 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
     self->cameraNode->SetCamera(self->camera);
     self->cameraNode->Translate(tc::Vector3(0, 0.5, 0), ETransformSpace::World);
 
+    self->mainLightNode = self->scene->GetRootNode()->CreateChildNode();
+    self->mainLightNode->SetName("mainLightNode");
+    self->light = std::make_shared<CLight>(tc::Color(1.0, 1.0, 1.0), 10.0);
+    self->mainLightNode->AddLight(self->light);
+    self->mainLightNode->Translate(tc::Vector3(0.0, 20.0, 0.0), ETransformSpace::World);
+    self->mainLightNode->Rotate(tc::Quaternion(0.0, 90.0, 0.0), ETransformSpace::World);
+
     CglTFSceneImporter importer(self->scene, *game->device);
     importer.ImportFile(CResourceManager::Get().FindFile("Models/Sponza.gltf"));
 

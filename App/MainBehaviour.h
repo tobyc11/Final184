@@ -22,6 +22,8 @@ public:
     std::shared_ptr<CMegaPipeline> renderPipeline;
     CSceneNode* cameraNode;
     std::shared_ptr<CCamera> camera;
+    CSceneNode* mainLightNode;
+    std::shared_ptr<CLight> light;
 
     MainBehaviour(CGameObject* root);
 
