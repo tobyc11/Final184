@@ -18,6 +18,6 @@ void main() {
     outColor = vec4(color * ao * lighting, 1.0);
 
     if (inUV.x < 0.25 && inUV.y < 0.25) {
-        outColor = vec4(texture(sampler2D(t_shadow, s), inUV * 4.0).rrr, 1.0);
+        outColor = vec4(vec3(texture(sampler2D(t_shadow, s), inUV * 4.0).r), 1.0);
     }
 }

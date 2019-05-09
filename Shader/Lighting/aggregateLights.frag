@@ -20,6 +20,13 @@ layout(set = 1, binding = 0) uniform sampler s;
 layout(set = 1, binding = 1) uniform texture2D t_albedo;
 layout(set = 1, binding = 2) uniform texture2D t_normals;
 layout(set = 1, binding = 3) uniform texture2D t_depth;
+layout(set = 1, binding = 4) uniform texture2D t_shadow;
+
+layout(set = 1, binding = 5) uniform ExtendedMatrices {
+    mat4 InvModelView;
+    mat4 ShadowView;
+    mat4 ShadowProj;
+};
 
 layout(set = 2, binding = 0) uniform pointLights {
     Light lights[MAX_LIGHT_COUNT];
@@ -69,11 +76,20 @@ void main() {
 
         vec3 lightVector = -normalize(mat3(ViewMat) * L.position);
         float cosineLambert = max(0.0, dot(lightVector, csnorm));
-        result.rgb += L.luminance * cosineLambert;
+
+        vec3 wpos = (InvModelView * vec4(cspos, 1.0)).xyz;
+        vec4 spos = (ShadowProj * ShadowView * vec4(wpos, 1.0));
+        spos /= spos.w;
+
+        float shade = float(texture(sampler2D(t_shadow, s), spos.xy * 0.5 + 0.5).z * 2.0 - 1.0 > spos.z);
+       
+        result.rgb += L.luminance * cosineLambert * shade;
+
+        result.rgb = vec3(shade);
     }
 
     // Add the ambient
-    result.rgb += vec3(0.3);
+    //result.rgb += vec3(0.3);
 
     lightingBuffer = result;
 }

@@ -115,6 +115,13 @@ void getAllLights(LightLists* lightsPoint, LightLists* lightsDirectioanl, CScene
     }
 }
 
+struct alignas(16) ExtendedMatricesConstants
+{
+    tc::Matrix4 InvModelView;
+    tc::Matrix4 ShadowView;
+    tc::Matrix4 ShadowProjection;
+};
+
 void CMegaPipeline::Render()
 {
     // Or render some test image?
@@ -181,6 +188,13 @@ void CMegaPipeline::Render()
     gtao_blur->blit2d();
     gtao_blur->endRender();
 
+    ExtendedMatricesConstants matricesConstants;
+    matricesConstants.InvModelView = constants.ViewMat.Inverse();
+    matricesConstants.ShadowProjection =
+        ShadowSceneView->GetCameraNode()->GetCamera()->GetMatrix().Transpose();
+    matricesConstants.ShadowView =
+        ShadowSceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4().Transpose();
+
     lighting_deferred->beginRender(cmdList);
     lighting_deferred->setSampler("s", GlobalLinearSampler);
     lighting_deferred->setImageView("t_albedo", GBuffer0);
@@ -189,6 +203,9 @@ void CMegaPipeline::Render()
     lighting_deferred->setStruct("GlobalConstants", sizeof(GlobalConstants), &constants);
     lighting_deferred->setStruct("pointLights", sizeof(LightLists), &pointLightLists);
     lighting_deferred->setStruct("directionalLights", sizeof(LightLists), &directionalLightLists);
+    lighting_deferred->setImageView("t_shadow", ShadowDepth);
+    lighting_deferred->setStruct("ExtendedMatrices", sizeof(ExtendedMatricesConstants),
+                                 &matricesConstants);
     lighting_deferred->blit2d();
     lighting_deferred->endRender();
 
