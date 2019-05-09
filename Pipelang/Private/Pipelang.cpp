@@ -2,9 +2,10 @@
 #include "ShaderCache.h"
 #include <PathTools.h>
 
+#include <lua.hpp>
+
 #include <LuaBridge/LuaBridge.h>
 #include <LuaBridge/Vector.h>
-#include <lua.hpp>
 
 #include <algorithm>
 #include <fstream>
