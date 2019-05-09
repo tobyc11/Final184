@@ -37,12 +37,15 @@ static void InspectorDFSNode(CSceneNode* scnNode)
             ImGui::DragFloat3("Max", &bb.Max.x);
         }
         auto t = scnNode->GetPosition();
-        auto r = scnNode->GetRotation();
+        auto r = scnNode->GetRotation().EulerAngles();
         auto s = scnNode->GetScale();
         if (ImGui::DragFloat3("Translate", &t.x, 0.1f))
             scnNode->SetPosition(t);
-        if (ImGui::DragFloat4("Rotate", &r.w, 0.1f))
-            scnNode->SetRotation(r);
+        if (ImGui::DragFloat3("Rotate", &r.x, 0.1f))
+        {
+            tc::Quaternion quat;
+            quat.FromEulerAngles(r.x, r.y, r.z);
+		}
         if (ImGui::DragFloat3("Scale", &s.x, 0.1f))
             scnNode->SetScale(s);
 
