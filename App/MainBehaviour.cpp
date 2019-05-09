@@ -70,6 +70,9 @@ static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double
 {
     auto self = dynamic_pointer_cast<MainBehaviour>(selfref);
 
+    self->directionalLightNode->SetRotation(
+        tc::Quaternion(-80.0, fmod(elapsedTime * 6.0, 360.0), 0.0));
+
     float moveSpeed = 4;
     float moveDpos = moveSpeed / 120;
 

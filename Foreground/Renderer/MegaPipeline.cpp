@@ -214,8 +214,13 @@ void CMegaPipeline::Render()
     gtao_color->setSampler("s", GlobalLinearSampler);
     gtao_color->setImageView("t_albedo", GBuffer0);
     gtao_color->setImageView("t_ao", gtao_blur->getRTViews()[0]);
+    gtao_color->setImageView("t_depth", GBufferDepth);
     gtao_color->setImageView("t_lighting", lighting_deferred->getRTViews()[0]);
     gtao_color->setImageView("t_shadow", ShadowDepth);
+    gtao_color->setStruct("GlobalConstants", sizeof(GlobalConstants), &constants);
+    gtao_color->setStruct("ExtendedMatrices", sizeof(ExtendedMatricesConstants),
+                                 &matricesConstants);
+    gtao_color->setStruct("Sun", sizeof(PerLightConstants), &directionalLightLists.lights[0]);
     gtao_color->blit2d();
 
     // Render ImGui at the latest possible time so that we can still use ImGui inside renderer
