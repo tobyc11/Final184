@@ -2,9 +2,9 @@
 #include "ShaderCache.h"
 #include <PathTools.h>
 
-#include <lua.hpp>
 #include <LuaBridge/LuaBridge.h>
 #include <LuaBridge/Vector.h>
+#include <lua.hpp>
 
 #include <algorithm>
 #include <fstream>
@@ -18,22 +18,22 @@ static void ExportClassesToLua(lua_State* L)
 
     getGlobalNamespace(L)
         .beginNamespace("rt")
-            .beginClass<CVertexAttribs>("CVertexAttribs")
-                .addConstructor<void (*)(void)>()
-                .addFunction("AddAttribute", &CVertexAttribs::AddAttribute)
-            .endClass()
-            .beginClass<CParameterBlock>("CParameterBlock")
-                .addConstructor<void (*)(void)>()
-                .addFunction("AddBinding", &CParameterBlock::AddBinding)
-                .addFunction("SetSetIndex", &CParameterBlock::SetSetIndex)
-                .addFunction("GetSetIndex", &CParameterBlock::GetSetIndex)
-            .endClass()
-            .beginClass<CPipelangLibrary>("CPipelangLibrary")
-                .addFunction("AddParameterBlock", &CPipelangLibrary::AddParameterBlock)
-                .addFunction("AddVertexAttribs", &CPipelangLibrary::AddVertexAttribs)
-            .endClass()
-            .beginClass<CPipelangContext>("CPipelangContext")
-            .endClass()
+        .beginClass<CVertexAttribs>("CVertexAttribs")
+        .addConstructor<void (*)(void)>()
+        .addFunction("AddAttribute", &CVertexAttribs::AddAttribute)
+        .endClass()
+        .beginClass<CParameterBlock>("CParameterBlock")
+        .addConstructor<void (*)(void)>()
+        .addFunction("AddBinding", &CParameterBlock::AddBinding)
+        .addFunction("SetSetIndex", &CParameterBlock::SetSetIndex)
+        .addFunction("GetSetIndex", &CParameterBlock::GetSetIndex)
+        .endClass()
+        .beginClass<CPipelangLibrary>("CPipelangLibrary")
+        .addFunction("AddParameterBlock", &CPipelangLibrary::AddParameterBlock)
+        .addFunction("AddVertexAttribs", &CPipelangLibrary::AddVertexAttribs)
+        .endClass()
+        .beginClass<CPipelangContext>("CPipelangContext")
+        .endClass()
         .endNamespace();
 }
 
@@ -65,10 +65,7 @@ void CVertexAttribs::AddAttribute(const std::string& name, uint32_t location)
     assert(static_cast<uint32_t>(semantic) != 0);
 }
 
-RHI::CDescriptorSetLayout::Ref CParameterBlock::GetDescriptorSetLayout() const
-{
-    return Layout;
-}
+RHI::CDescriptorSetLayout::Ref CParameterBlock::GetDescriptorSetLayout() const { return Layout; }
 
 RHI::CDescriptorSet::Ref CParameterBlock::CreateDescriptorSet() const
 {
@@ -81,56 +78,54 @@ const RHI::CDescriptorSetLayoutBinding& CParameterBlock::GetBinding(const std::s
 }
 
 void CParameterBlock::BindBuffer(const RHI::CDescriptorSet::Ref& ds, RHI::CBuffer::Ref buffer,
-                                 size_t offset,
-                                 size_t range,
-                                 const std::string& name,
+                                 size_t offset, size_t range, const std::string& name,
                                  uint32_t index)
 {
     uint32_t binding = GetBinding(name).Binding;
     ds->BindBuffer(std::move(buffer), offset, range, binding, index);
 }
 
-void CParameterBlock::BindConstants(const RHI::CDescriptorSet::Ref& ds,
-                                    const void* data,
-                                    size_t size,
-                                    const std::string& name,
-                                    uint32_t index)
+void CParameterBlock::BindConstants(const RHI::CDescriptorSet::Ref& ds, const void* data,
+                                    size_t size, const std::string& name, uint32_t index)
 {
     uint32_t binding = GetBinding(name).Binding;
     ds->BindConstants(data, size, binding, index);
 }
 
-void CParameterBlock::BindImageView(const RHI::CDescriptorSet::Ref& ds, RHI::CImageView::Ref imageView, const std::string& name, uint32_t index)
+void CParameterBlock::BindImageView(const RHI::CDescriptorSet::Ref& ds,
+                                    RHI::CImageView::Ref imageView, const std::string& name,
+                                    uint32_t index)
 {
     uint32_t binding = GetBinding(name).Binding;
     ds->BindImageView(std::move(imageView), binding, index);
 }
 
-void CParameterBlock::BindSampler(const RHI::CDescriptorSet::Ref& ds, RHI::CSampler::Ref sampler, const std::string& name, uint32_t index)
+void CParameterBlock::BindSampler(const RHI::CDescriptorSet::Ref& ds, RHI::CSampler::Ref sampler,
+                                  const std::string& name, uint32_t index)
 {
     uint32_t binding = GetBinding(name).Binding;
     ds->BindSampler(std::move(sampler), binding, index);
 }
 
-void CParameterBlock::BindBufferView(const RHI::CDescriptorSet::Ref& ds, RHI::CBufferView::Ref bufferView, const std::string& name, uint32_t index)
+void CParameterBlock::BindBufferView(const RHI::CDescriptorSet::Ref& ds,
+                                     RHI::CBufferView::Ref bufferView, const std::string& name,
+                                     uint32_t index)
 {
     uint32_t binding = GetBinding(name).Binding;
     ds->BindBufferView(std::move(bufferView), binding, index);
 }
 
-void CParameterBlock::SetDynamicOffset(const RHI::CDescriptorSet::Ref& ds, size_t offset, const std::string& name, uint32_t index)
+void CParameterBlock::SetDynamicOffset(const RHI::CDescriptorSet::Ref& ds, size_t offset,
+                                       const std::string& name, uint32_t index)
 {
     uint32_t binding = GetBinding(name).Binding;
     ds->SetDynamicOffset(offset, binding, index);
 }
 
-void CParameterBlock::AddBinding(const std::string& name,
-                                 uint32_t binding,
-                                 const std::string& type,
-                                 uint32_t count,
-                                 const std::string& stages)
+void CParameterBlock::AddBinding(const std::string& name, uint32_t binding, const std::string& type,
+                                 uint32_t count, const std::string& stages)
 {
-    RHI::CDescriptorSetLayoutBinding b{};
+    RHI::CDescriptorSetLayoutBinding b {};
     b.Binding = binding;
     b.Count = count;
     for (const auto& ch : stages)
@@ -149,25 +144,23 @@ void CParameterBlock::AddBinding(const std::string& name,
             b.StageFlags |= RHI::EShaderStageFlags::Compute;
     }
     static const std::unordered_map<std::string, RHI::EDescriptorType> typeMap = {
-        {"sampler", RHI::EDescriptorType::Sampler},
-        {"texture2D", RHI::EDescriptorType::Image},
-        {"image2D", RHI::EDescriptorType::StorageImage},
-        {"uniform", RHI::EDescriptorType::UniformBuffer},
-        {"buffer", RHI::EDescriptorType::StorageBuffer},
+        { "sampler", RHI::EDescriptorType::Sampler },
+        { "texture2D", RHI::EDescriptorType::Image },
+        { "image2D", RHI::EDescriptorType::StorageImage },
+        { "texture3D", RHI::EDescriptorType::Image },
+        { "image3D", RHI::EDescriptorType::StorageImage },
+        { "textureBuffer", RHI::EDescriptorType::UniformTexelBuffer },
+        { "imageBuffer", RHI::EDescriptorType::StorageTexelBuffer },
+        { "uniform", RHI::EDescriptorType::UniformBuffer },
+        { "buffer", RHI::EDescriptorType::StorageBuffer },
     };
     b.Type = typeMap.at(type);
     Bindings.emplace(name, b);
 }
 
-void CParameterBlock::SetSetIndex(uint32_t index)
-{
-    SetIndex = index;
-}
+void CParameterBlock::SetSetIndex(uint32_t index) { SetIndex = index; }
 
-uint32_t CParameterBlock::GetSetIndex() const
-{
-    return SetIndex;
-}
+uint32_t CParameterBlock::GetSetIndex() const { return SetIndex; }
 
 void CParameterBlock::CreateDescriptorLayout(const RHI::CDevice::Ref& device)
 {
@@ -187,7 +180,8 @@ void CParameterBlock::CreateDescriptorLayout(const RHI::CDevice::Ref& device)
 }
 
 CPipelangLibrary::CPipelangLibrary(CPipelangContext* p, std::string sourceDir)
-    : Parent(p), SourceDir(std::move(sourceDir))
+    : Parent(p)
+    , SourceDir(std::move(sourceDir))
 {
 }
 
@@ -201,18 +195,21 @@ void CPipelangLibrary::Parse()
     ExportClassesToLua(L);
 
     {
-        setGlobal(L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal").c_str(), "internal_path");
+        setGlobal(L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal").c_str(),
+                  "internal_path");
 
         setGlobal(L, this, "library");
         setGlobal(L, Parent, "context");
 
-        error = luaL_dofile(L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal/sandbox.lua").c_str());
+        error = luaL_dofile(
+            L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal/sandbox.lua").c_str());
         if (error)
         {
             fprintf(stderr, "%s\n", lua_tostring(L, -1));
             lua_pop(L, 1);
         }
-        error = luaL_dofile(L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal/parser.lua").c_str());
+        error = luaL_dofile(
+            L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal/parser.lua").c_str());
         if (error)
         {
             fprintf(stderr, "%s\n", lua_tostring(L, -1));
@@ -221,7 +218,6 @@ void CPipelangLibrary::Parse()
 
         LuaRef parser = getGlobal(L, "parser");
         parser["add_all_interface_stages"]();
-
     }
 
     lua_close(L);
@@ -229,10 +225,7 @@ void CPipelangLibrary::Parse()
     RecreateDeviceResources();
 }
 
-void CPipelangLibrary::PrecacheShaders()
-{
-
-}
+void CPipelangLibrary::PrecacheShaders() {}
 
 void CPipelangLibrary::RecreateDeviceResources()
 {
@@ -293,24 +286,28 @@ bool CPipelangLibrary::GetPipeline(RHI::CPipelineDesc& desc, const std::vector<s
     ExportClassesToLua(L);
 
     {
-        setGlobal(L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal").c_str(), "internal_path");
+        setGlobal(L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal").c_str(),
+                  "internal_path");
 
         setGlobal(L, this, "library");
         setGlobal(L, Parent, "context");
 
-        error = luaL_dofile(L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal/sandbox.lua").c_str());
+        error = luaL_dofile(
+            L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal/sandbox.lua").c_str());
         if (error)
         {
             fprintf(stderr, "%s\n", lua_tostring(L, -1));
             lua_pop(L, 1);
         }
-        error = luaL_dofile(L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal/parser.lua").c_str());
+        error = luaL_dofile(
+            L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal/parser.lua").c_str());
         if (error)
         {
             fprintf(stderr, "%s\n", lua_tostring(L, -1));
             lua_pop(L, 1);
         }
-        error = luaL_dofile(L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal/codegen.lua").c_str());
+        error = luaL_dofile(
+            L, tc::FPathTools::Join(PIPELANG_SOURCE_DIR, "Internal/codegen.lua").c_str());
         if (error)
         {
             fprintf(stderr, "%s\n", lua_tostring(L, -1));
@@ -405,7 +402,8 @@ const std::unique_ptr<CShaderCache>& CPipelangContext::GetShaderCache() const
     return ShaderCache;
 }
 
-std::unordered_map<std::string, RHI::CPipelineLayout::Ref>& CPipelangContext::GetPipelineLayoutCache()
+std::unordered_map<std::string, RHI::CPipelineLayout::Ref>&
+CPipelangContext::GetPipelineLayoutCache()
 {
     return PipelineLayoutCache;
 }
