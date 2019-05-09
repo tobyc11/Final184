@@ -28,6 +28,7 @@ CMegaPipeline::CMegaPipeline(RHI::CSwapChain::Ref swapChain)
     : SwapChain(swapChain)
     , GBufferRenderer(this)
     , ZOnlyRenderer(this)
+    , VoxelizeRenderer(this)
 {
     RHI::CSamplerDesc desc;
     desc.AddressModeU = RHI::ESamplerAddressMode::Wrap;
@@ -46,6 +47,7 @@ CMegaPipeline::CMegaPipeline(RHI::CSwapChain::Ref swapChain)
     CreateRenderPasses();
     GBufferRenderer.SetRenderPass(GBufferPass);
     ZOnlyRenderer.SetRenderPass(ZOnlyPass);
+    VoxelizeRenderer.SetRenderPass(VoxelizationPass);
 
     RHI::CRHIImGuiBackend::Init(RenderDevice, gtao_color->getRenderPass());
 
@@ -163,6 +165,13 @@ void CMegaPipeline::Render()
     passCtx = cmdList->CreateParallelRenderContext(ZOnlyPass, { RHI::CClearValue(1.0f, 0) });
     ctx = passCtx->CreateRenderContext(0);
     ZOnlyRenderer.RenderList(*ctx, ShadowSceneView->GetVisiblePrimModelMatrix(),
+                             ShadowSceneView->GetVisiblePrimitiveList());
+    ctx->FinishRecording();
+    passCtx->FinishRecording();
+
+    passCtx = cmdList->CreateParallelRenderContext(VoxelizationPass, { });
+    ctx = passCtx->CreateRenderContext(0);
+    VoxelizeRenderer.RenderList(*ctx, ShadowSceneView->GetVisiblePrimModelMatrix(),
                              ShadowSceneView->GetVisiblePrimitiveList());
     ctx->FinishRecording();
     passCtx->FinishRecording();
@@ -305,6 +314,7 @@ void CMegaPipeline::CreateRenderPasses()
     CreateShadowBufferPass();
     CreateGBufferPass(w, h);
     CreateScreenPass();
+    CreateVoxelizePass();
 }
 
 void CMegaPipeline::CreateShadowBufferPass()
@@ -373,6 +383,26 @@ void CMegaPipeline::CreateGBufferPass(uint32_t width, uint32_t height)
     rpDesc.Height = height;
     rpDesc.Layers = 1;
     GBufferPass = RenderDevice->CreateRenderPass(rpDesc);
+}
+
+void CMegaPipeline::CreateVoxelizePass()
+{
+    using namespace RHI;
+
+    auto voxelVolume = RenderDevice->CreateImage3D(EFormat::R8G8B8A8_UNORM, EImageUsageFlags::Storage, 512, 512, 512);
+
+    CImageViewDesc voxelViewDesc;
+    voxelViewDesc.Format = EFormat::R8G8B8A8_UNORM;
+    voxelViewDesc.Type = EImageViewType::View3D;
+    voxelViewDesc.Range.Set(0, 1, 0, 1);
+    VoxelBuffer = RenderDevice->CreateImageView(voxelViewDesc, voxelVolume);
+
+    CRenderPassDesc rpDesc;
+    rpDesc.NextSubpass().ColorAttachments.clear();
+    rpDesc.Width = 512;
+    rpDesc.Height = 512;
+    rpDesc.Layers = 1;
+    VoxelizationPass = RenderDevice->CreateRenderPass(rpDesc);
 }
 
 void CMegaPipeline::CreateScreenPass()

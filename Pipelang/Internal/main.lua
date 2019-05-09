@@ -120,6 +120,10 @@ function BasicZOnlyMaterial()
     ]]
 end
 
+ParameterBlock "VoxelData" : Set(3) {
+    Output "image3D" "voxels" : Stages "P";
+};
+
 function GBufferPS()
     Input "vec4" "BaseColor";
     Input "vec3" "iNormal";
@@ -128,6 +132,15 @@ function GBufferPS()
     Code [[
         Target0 = vec4(BaseColor.rgb, 1.0);
         Target1 = vec4(fma(iNormal, vec3(0.5), vec3(0.5)), 0.0);
+    ]]
+end
+
+function VoxelPS()
+    Input "vec4" "BaseColor";
+    Input "vec3" "iNormal";
+    Input "image3D" "voxels";
+    Code [[
+        imageStore(voxels, ivec3(gl_FragCoord.xyz), BaseColor.rgb);
     ]]
 end
 

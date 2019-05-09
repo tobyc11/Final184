@@ -2,6 +2,7 @@
 #include "ForegroundCommon.h"
 #include "GBufferRenderer.h"
 #include "ZOnlyRenderer.h"
+#include "VoxelizeRenderer.h"
 #include "SceneGraph/SceneView.h"
 #include <Pipeline.h>
 #include <Resources.h>
@@ -37,11 +38,14 @@ public:
     void UpdateEngineCommonShadow();
     void BindEngineCommonShadow(RHI::IRenderContext& context);
 
+    RHI::CImageView::Ref getVoxelsImageView() const { return VoxelBuffer; };
+
 protected:
     void CreateRenderPasses();
     void CreateGBufferPass(uint32_t width, uint32_t height);
     void CreateShadowBufferPass();
     void CreateScreenPass();
+    void CreateVoxelizePass();
 
 private:
     RHI::CSwapChain::Ref SwapChain;
@@ -54,7 +58,9 @@ private:
     // RHI::CImageView::Ref GBuffer3;
     RHI::CImageView::Ref GBufferDepth;
     RHI::CImageView::Ref ShadowDepth;
+    RHI::CImageView::Ref VoxelBuffer;
     RHI::CRenderPass::Ref GBufferPass;
+    RHI::CRenderPass::Ref VoxelizationPass;
     RHI::CRenderPass::Ref ZOnlyPass;
 
     RHI::CSampler::Ref GlobalNiceSampler;
@@ -64,6 +70,7 @@ private:
 
     CGBufferRenderer GBufferRenderer;
     CZOnlyRenderer ZOnlyRenderer;
+    CVoxelizeRenderer VoxelizeRenderer;
 
     std::shared_ptr<CMaterial> gtao_visibility;
     std::shared_ptr<CMaterial> gtao_blur;
