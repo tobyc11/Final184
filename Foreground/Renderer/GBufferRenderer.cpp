@@ -1,5 +1,3 @@
-#include <utility>
-
 #include "GBufferRenderer.h"
 #include "ForegroundCommon.h"
 #include "MegaPipeline.h"
@@ -26,6 +24,7 @@ void CGBufferRenderer::RenderList(RHI::IRenderContext& context,
     if (modelMats.empty())
         return;
 
+    BoundSet0 = false;
     for (size_t i = 0; i < modelMats.size(); i++)
         Render(context, modelMats[i], primitives[i]);
 }
@@ -41,9 +40,10 @@ void CGBufferRenderer::PreparePrimitiveResources(std::shared_ptr<CPrimitive> pri
         if (auto basicMat = std::dynamic_pointer_cast<CBasicMaterial>(primitive->GetMaterial()))
         {
             RHI::CPipelineDesc desc;
-            bool ok = lib.GetPipeline(desc, {"EngineCommon", "StandardTriMesh", "PerPrimitive",
-                                   "StaticMeshVS", "DefaultRasterizer", "BasicMaterialParams",
-                                   "BasicMaterial", "GBufferPS"});
+            bool ok = lib.GetPipeline(desc,
+                                      { "EngineCommon", "StandardTriMesh", "PerPrimitive",
+                                        "StaticMeshVS", "DefaultRasterizer", "BasicMaterialParams",
+                                        "BasicMaterial", "GBufferPS" });
 
             if (!ok)
                 return;
@@ -51,8 +51,9 @@ void CGBufferRenderer::PreparePrimitiveResources(std::shared_ptr<CPrimitive> pri
             desc.PrimitiveTopology = triMesh->GetPrimitiveTopology();
             desc.RasterizerState.CullMode = RHI::ECullModeFlags::None;
             desc.RenderPass = RenderPass;
-            desc.Subpass = 0;;
-            triMesh->PipelineSetVertexInputDesc(desc, lib.GetVertexAttribs("StandardTriMesh").GetAttributesByLocation());
+            desc.Subpass = 0;
+            triMesh->PipelineSetVertexInputDesc(
+                desc, lib.GetVertexAttribs("StandardTriMesh").GetAttributesByLocation());
             auto pipeline = RenderDevice->CreatePipeline(desc);
 
             CPrimitiveResources resources;
@@ -92,7 +93,9 @@ void CGBufferRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4&
         if (auto basicMat = std::dynamic_pointer_cast<CBasicMaterial>(primitive->GetMaterial()))
         {
             context.BindRenderPipeline(*iter->second.Pipeline);
-            Parent->BindEngineCommon(context);
+            if (!BoundSet0)
+                Parent->BindEngineCommon(context);
+            BoundSet0 = true;
 
             basicMat->Bind(context);
 
@@ -101,7 +104,8 @@ void CGBufferRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4&
             primitiveConstants.NormalMat = modelMat.ToMatrix3().Inverse();
             auto& lib = PipelangContext.GetLibrary("Internal");
             auto& pb = lib.GetParameterBlock("PerPrimitive");
-            pb.BindConstants(iter->second.NodeDS, &primitiveConstants, sizeof(primitiveConstants), "PerPrimitiveConstants");
+            pb.BindConstants(iter->second.NodeDS, &primitiveConstants, sizeof(primitiveConstants),
+                             "PerPrimitiveConstants");
             context.BindRenderDescriptorSet(2, *iter->second.NodeDS);
 
             triMesh->Draw(context);

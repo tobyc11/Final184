@@ -25,7 +25,11 @@ void CBasicMaterial::Bind(RHI::IRenderContext& context)
         pb.BindBuffer(DescriptorSet, MaterialConstantsBuffer, 0, sizeof(MaterialConstants),
                       "MaterialConstants");
         pb.BindImageView(DescriptorSet, GetAlbedoImage(), "BaseColorTex");
-        pb.BindImageView(DescriptorSet, GetMetallicRoughnessImage(), "MetallicRoughnessTex");
+        if (GetAlbedoImage() && !GetMetallicRoughnessImage())
+            // TODO: replace this with a dummy texture
+            pb.BindImageView(DescriptorSet, GetAlbedoImage(), "MetallicRoughnessTex");
+        else
+            pb.BindImageView(DescriptorSet, GetMetallicRoughnessImage(), "MetallicRoughnessTex");
 
         bDSDirty = false;
     }

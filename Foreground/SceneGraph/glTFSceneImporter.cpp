@@ -118,12 +118,13 @@ public:
         assert(img.bits == 8);
 
         auto image =
-            Device.CreateImage2D(RHI::EFormat::R8G8B8A8_UNORM, RHI::EImageUsageFlags::Sampled,
+            Device.CreateImage2D(RHI::EFormat::R8G8B8A8_UNORM,
+                                 RHI::EImageUsageFlags::Sampled | RHI::EImageUsageFlags::GenMIPMaps,
                                  img.width, img.height, 1, 1, 1, img.image.data());
         RHI::CImageViewDesc viewDesc;
         viewDesc.Type = RHI::EImageViewType::View2D;
         viewDesc.Format = RHI::EFormat::R8G8B8A8_UNORM;
-        viewDesc.Range.Set(0, 1, 0, 1);
+        viewDesc.Range.Set(0, image->GetMipLevels(), 0, 1);
         auto imageView = Device.CreateImageView(viewDesc, image);
         Images[index] = imageView;
         return imageView;
