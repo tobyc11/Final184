@@ -30,7 +30,7 @@ void COctree::InsertObject(CSceneNode* object)
             && objBound.Center() >= CellArray[currCell].Center - CellArray[currCell].HalfSize)
         {
             if (!HasChildren(CellArray[currCell]))
-                AllocateChildCells(CellArray[currCell]);
+                AllocateChildCells(currCell);
             uint32_t x, y, z;
             if (objBound.Center().x > CellArray[currCell].Center.x)
                 x = 1;
@@ -80,23 +80,23 @@ void COctree::Intersect(const tc::Frustum& frustum, std::list<CSceneNode*>& resu
     Intersect(0, frustum, result);
 }
 
-void COctree::AllocateChildCells(COctreeCell& cell)
+void COctree::AllocateChildCells(size_t i)
 {
-#define GetChild(node, offset) CellArray[node.ChildrenStartOffset + offset]
-
     // Potential data race?
-    cell.ChildrenStartOffset = CellArray.size();
+    CellArray[i].ChildrenStartOffset = CellArray.size();
     CellArray.resize(CellArray.size() + 8);
-    tc::Vector3 quaterSize = cell.HalfSize / 2.0f;
+    tc::Vector3 quaterSize = CellArray[i].HalfSize / 2.0f;
     for (uint32_t x = 0; x < 2; x++)
         for (uint32_t y = 0; y < 2; y++)
             for (uint32_t z = 0; z < 2; z++)
             {
                 tc::Vector3 mask((float)x * 2 - 1, (float)y * 2 - 1, (float)z * 2 - 1);
                 auto off = x | y << 1 | z << 2;
-                GetChild(cell, off).Center = cell.Center + quaterSize * mask;
-                GetChild(cell, off).HalfSize = cell.HalfSize / 2.0f;
-                GetChild(cell, off).ChildrenStartOffset = 0;
+                CellArray[CellArray[i].ChildrenStartOffset + off].Center =
+                    CellArray[i].Center + quaterSize * mask;
+                CellArray[CellArray[i].ChildrenStartOffset + off].HalfSize =
+                    CellArray[i].HalfSize / 2.0f;
+                CellArray[CellArray[i].ChildrenStartOffset + off].ChildrenStartOffset = 0;
             }
 }
 

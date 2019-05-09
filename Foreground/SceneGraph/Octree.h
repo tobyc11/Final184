@@ -35,7 +35,7 @@ public:
     void Intersect(const tc::Frustum& frustum, std::list<CSceneNode*>& result);
 
 protected:
-    void AllocateChildCells(COctreeCell& cell);
+    void AllocateChildCells(size_t i);
     bool HasChildren(const COctreeCell& cell);
 
     void Intersect(size_t cell, const tc::Frustum& frustum, std::list<CSceneNode*>& result);
