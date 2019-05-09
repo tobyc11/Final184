@@ -27,7 +27,7 @@ int platformInit(std::vector<std::string> cmd_args, Game& game)
     game.device = CInstance::Get().CreateDevice(EDeviceCreateHints::Discrete);
     SDL_Init(SDL_INIT_VIDEO);
     game.window = SDL_CreateWindow("RHI Triangle Demo", SDL_WINDOWPOS_UNDEFINED,
-                                   SDL_WINDOWPOS_UNDEFINED, 640, 480,
+                                   SDL_WINDOWPOS_UNDEFINED, 1280, 720,
                                    SDL_WINDOW_RESIZABLE
                                  | SDL_WINDOW_ALLOW_HIGHDPI
 #if TC_OS == TC_OS_MAC_OS_X
@@ -45,8 +45,8 @@ int platformInit(std::vector<std::string> cmd_args, Game& game)
     SDL_VERSION(&wmInfo.version);
     SDL_GetWindowWMInfo(game.window, &wmInfo);
 
-    game.windowWidth = 640;
-    game.windowHeight = 480;
+    game.windowWidth = 1280;
+    game.windowHeight = 720;
 
     // Bind presentation surface to window
 #if TC_OS == TC_OS_WINDOWS_NT

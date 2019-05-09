@@ -51,6 +51,7 @@ private:
 
     bool bDSDirty = true;
     RHI::CDescriptorSet::Ref DescriptorSet;
+	RHI::CBuffer::Ref MaterialConstantsBuffer;
 };
 
 } /* namespace Foreground */

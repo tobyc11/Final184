@@ -98,6 +98,7 @@ void CGBufferRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4&
 
             PerPrimitiveConstants primitiveConstants;
             primitiveConstants.ModelMat = modelMat.ToMatrix4().Transpose();
+            primitiveConstants.NormalMat = modelMat.ToMatrix3().Inverse();
             auto& lib = PipelangContext.GetLibrary("Internal");
             auto& pb = lib.GetParameterBlock("PerPrimitive");
             pb.BindConstants(iter->second.NodeDS, &primitiveConstants, sizeof(primitiveConstants), "PerPrimitiveConstants");

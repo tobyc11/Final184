@@ -34,6 +34,7 @@ private:
     struct PerPrimitiveConstants
     {
         tc::Matrix4 ModelMat;
+        tc::Matrix4 NormalMat;
     };
 
     struct CPrimitiveResources

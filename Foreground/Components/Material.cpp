@@ -53,7 +53,8 @@ CMaterial::CMaterial(CDevice::Ref device, const string& VS_file, const string& P
     this->device = device;
 }
 
-CMaterial::~CMaterial() {
+CMaterial::~CMaterial()
+{
     renderPass = nullptr;
     pipeline = nullptr;
     renderTargetViews.clear();
@@ -130,7 +131,7 @@ void CMaterial::createPipeline(int w, int h)
         if (resources.find(attr.second.id) == resources.end())
         {
             cerr << "Vertex attribute " << attr.second.id << " not found in shaders" << endl;
-            continue; 
+            continue;
         }
 
         uint32_t location = resources[attr.second.id].Location;
@@ -138,14 +139,15 @@ void CMaterial::createPipeline(int w, int h)
 
         if (bufferBinding == -1)
         {
-            cerr << "Buffer " << attr.second.buffer_name << " for vertex attribute " << attr.second.id << " not found" << endl;
+            cerr << "Buffer " << attr.second.buffer_name << " for vertex attribute "
+                 << attr.second.id << " not found" << endl;
             continue;
         }
 
         desc.VertexAttributes.push_back(
             { location, attr.second.format, (uint32_t)attr.second.offset, bufferBinding });
     }
-    
+
     pipeline = device->CreateManagedPipeline(desc);
     DescriptorSets = pipeline->CreateDescriptorSets();
 }
@@ -161,7 +163,8 @@ uint32_t CMaterial::getInputBufferBinding(std::string name) const
 void CMaterial::setAttribute(std::string id, RHI::EFormat format, size_t offset,
                              std::string buffer_name)
 {
-    vertexAttributes.insert_or_assign(id, CMaterialNamedAttribute{ id, format, offset, std::move(buffer_name) });
+    vertexAttributes.insert_or_assign(
+        id, CMaterialNamedAttribute { id, format, offset, std::move(buffer_name) });
 }
 
 void CMaterial::setSampler(const std::string& id, RHI::CSampler::Ref obj)
@@ -210,10 +213,7 @@ void CMaterial::beginRender(const RHI::CCommandList::Ref& c)
     ctx->BindRenderPipeline(*pipeline->Get());
 }
 
-const RHI::IRenderContext::Ref& CMaterial::getContext() const
-{
-    return ctx;
-}
+const RHI::IRenderContext::Ref& CMaterial::getContext() const { return ctx; }
 
 void CMaterial::endRender()
 {
@@ -228,7 +228,8 @@ void CMaterial::blit2d() const
     if (ctx)
     {
         for (uint32_t i = 0; i < DescriptorSets.size(); i++)
-            ctx->BindRenderDescriptorSet(i, *DescriptorSets[i]);
+            if (DescriptorSets[i])
+                ctx->BindRenderDescriptorSet(i, *DescriptorSets[i]);
         ctx->Draw(3, 1, 0, 0);
     }
 }

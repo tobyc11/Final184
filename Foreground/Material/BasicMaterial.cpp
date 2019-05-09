@@ -17,10 +17,13 @@ void CBasicMaterial::Bind(RHI::IRenderContext& context)
         materialConst.BaseColor = GetAlbedo();
         materialConst.MetallicRoughness.y = GetMetallic();
         materialConst.MetallicRoughness.z = GetRoughness();
-        materialConst.UseTextures =
-            GetAlbedoImage() || GetMetallicRoughnessImage() ? 1 : 0;
+        materialConst.UseTextures = GetAlbedoImage() || GetMetallicRoughnessImage() ? 1 : 0;
 
-        pb.BindConstants(DescriptorSet, &materialConst, sizeof(materialConst), "MaterialConstants");
+        MaterialConstantsBuffer = RenderDevice->CreateBuffer(
+            sizeof(MaterialConstants), RHI::EBufferUsageFlags::ConstantBuffer, &materialConst);
+
+        pb.BindBuffer(DescriptorSet, MaterialConstantsBuffer, 0, sizeof(MaterialConstants),
+                      "MaterialConstants");
         pb.BindImageView(DescriptorSet, GetAlbedoImage(), "BaseColorTex");
         pb.BindImageView(DescriptorSet, GetMetallicRoughnessImage(), "MetallicRoughnessTex");
 
