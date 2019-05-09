@@ -201,10 +201,10 @@ void CMegaPipeline::Render()
     lighting_deferred->setImageView("t_albedo", GBuffer0);
     lighting_deferred->setImageView("t_normals", GBuffer1);
     lighting_deferred->setImageView("t_depth", GBufferDepth);
+    lighting_deferred->setImageView("t_shadow", ShadowDepth);
     lighting_deferred->setStruct("GlobalConstants", sizeof(GlobalConstants), &constants);
     lighting_deferred->setStruct("pointLights", sizeof(LightLists), &pointLightLists);
     lighting_deferred->setStruct("directionalLights", sizeof(LightLists), &directionalLightLists);
-    lighting_deferred->setImageView("t_shadow", ShadowDepth);
     lighting_deferred->setStruct("ExtendedMatrices", sizeof(ExtendedMatricesConstants),
                                  &matricesConstants);
     lighting_deferred->blit2d();

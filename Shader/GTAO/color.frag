@@ -11,13 +11,29 @@ layout(set = 1, binding = 2) uniform texture2D t_ao;
 layout(set = 1, binding = 3) uniform texture2D t_lighting;
 layout(set = 1, binding = 4) uniform texture2D t_shadow;
 
+void tonemap(inout vec3 color, float adapted_lum) {
+	color *= adapted_lum;
+
+	const float a = 2.51f;
+	const float b = 0.03f;
+	const float c = 2.43f;
+	const float d = 0.59f;
+	const float e = 0.14f;
+	color = (color*(a*color+b))/(color*(c*color+d)+e);
+
+	color = pow(color, vec3(1.0/2.2));
+}
+
 void main() {
-    vec3 color = texture(sampler2D(t_albedo, s), inUV).rgb;
+    // Albedo has a gamma = 2.2
+    vec3 albedo = texture(sampler2D(t_albedo, s), inUV).rgb;
+    albedo = pow(albedo, vec3(2.2));
+    
     vec3 ao = texture(sampler2D(t_ao, s), inUV).rrr;
     vec3 lighting = texture(sampler2D(t_lighting, s), inUV).rgb;
-    outColor = vec4(color * ao * lighting, 1.0);
+    vec3 color = albedo * (ao * 0.2 + lighting);
 
-    if (inUV.x < 0.25 && inUV.y < 0.25) {
-        outColor = vec4(vec3(texture(sampler2D(t_shadow, s), inUV * 4.0).r), 1.0);
-    }
+    tonemap(color, 1.0);
+
+    outColor = vec4(color, 1.0);
 }

@@ -33,22 +33,22 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
 
     self->pointLightNode = self->scene->GetRootNode()->CreateChildNode();
     self->pointLightNode->SetName("pointLightNode");
-    self->lightPoint = std::make_shared<CLight>(tc::Color(0.1, 1.0, 0.6), 5.0);
+    self->lightPoint = std::make_shared<CLight>(tc::Color(0.1, 1.0, 0.6), 1.0);
     self->pointLightNode->AddLight(self->lightPoint);
     self->pointLightNode->Translate(tc::Vector3(0.0, 2.0, 0.0), ETransformSpace::World);
     
     self->directionalLightNode = self->scene->GetRootNode()->CreateChildNode();
     self->directionalLightNode->SetName("directionalLightNode");
-    self->lightDirectional = std::make_shared<CLight>(tc::Color(1.0, 0.95, 0.87), 1.0, ELightType::Directional);
+    self->lightDirectional = std::make_shared<CLight>(tc::Color(1.0, 0.95, 0.87), 2.0, ELightType::Directional);
     self->directionalLightNode->AddLight(self->lightDirectional);
-    self->directionalLightNode->Rotate(tc::Quaternion(-90.0, 0.0, 0.0), ETransformSpace::World);
-    self->directionalLightNode->Translate(tc::Vector3(0.0, 20.0, 0.0), ETransformSpace::World);
-    self->shadowCamera = std::make_shared<CCamera>();
-    self->shadowCamera->SetFarClip(25.0);
+    self->directionalLightNode->Rotate(tc::Quaternion(-80.0, -30.0, 50.0), ETransformSpace::World);
+    self->directionalLightNode->Translate(tc::Vector3(0.0, 16.0, 0.0), ETransformSpace::World);
+    self->shadowCamera = std::make_shared<CCamera>(true);
+    self->shadowCamera->SetFarClip(20.0);
     self->shadowCamera->SetNearClip(1.0);
     self->shadowCamera->SetAspectRatio(1.0);
-    self->shadowCamera->SetMagX(10.0);
-    self->shadowCamera->SetMagY(10.0);
+    self->shadowCamera->SetMagX(16.0);
+    self->shadowCamera->SetMagY(16.0);
     self->directionalLightNode->SetCamera(self->shadowCamera);
 
     CglTFSceneImporter importer(self->scene, *game->device);
@@ -148,7 +148,6 @@ static void render_tick(std::shared_ptr<CBehaviour> selfref, Game* game)
     self->scene->ShowInspectorImGui();
     CGameObject::ShowInspectorImGui(game->root);
 
-    ImGui::Render();
     self->renderPipeline->Render();
 }
 

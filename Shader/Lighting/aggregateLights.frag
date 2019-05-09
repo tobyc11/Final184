@@ -56,6 +56,48 @@ vec3 getCSpos(vec2 uv) {
 
 #include "math.inc"
 
+
+const float shadowMapResolution = 2048.0;
+const vec2 shadowPixSize = vec2(1.0 / shadowMapResolution);
+
+float shadowTexSmooth(in vec3 spos, out float depth, in float bias) {
+	vec2 uv = spos.xy * vec2(shadowMapResolution) - 1.0;
+	vec2 iuv = floor(uv);
+	vec2 fuv = uv - iuv;
+
+    float g0x = g0(fuv.x);
+    float g1x = g1(fuv.x);
+    float h0x = h0(fuv.x) * 0.75;
+    float h1x = h1(fuv.x) * 0.75;
+    float h0y = h0(fuv.y) * 0.75;
+    float h1y = h1(fuv.y) * 0.75;
+
+	vec2 p0 = (vec2(iuv.x + h0x, iuv.y + h0y) + 0.5) * shadowPixSize;
+	vec2 p1 = (vec2(iuv.x + h1x, iuv.y + h0y) + 0.5) * shadowPixSize;
+	vec2 p2 = (vec2(iuv.x + h0x, iuv.y + h1y) + 0.5) * shadowPixSize;
+	vec2 p3 = (vec2(iuv.x + h1x, iuv.y + h1y) + 0.5) * shadowPixSize;
+
+	depth = 0.0;
+	float texel = texture(sampler2D(t_shadow, s), p0).x; depth += texel;
+	float res0 = texel + bias > spos.z ? 1.0 : 0.0;
+
+	texel = texture(sampler2D(t_shadow, s), p1).x; depth += texel;
+	float res1 = texel + bias > spos.z ? 1.0 : 0.0;
+
+	texel = texture(sampler2D(t_shadow, s), p2).x; depth += texel;
+	float res2 = texel + bias > spos.z ? 1.0 : 0.0;
+
+	texel = texture(sampler2D(t_shadow, s), p3).x; depth += texel;
+	float res3 = texel + bias > spos.z ? 1.0 : 0.0;
+	depth *= 0.25;
+
+    return g0(fuv.y) * (g0x * res0  +
+                        g1x * res1) +
+           g1(fuv.y) * (g0x * res2  +
+                        g1x * res3);
+}
+
+
 void main() {
     vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
 
@@ -78,18 +120,15 @@ void main() {
         float cosineLambert = max(0.0, dot(lightVector, csnorm));
 
         vec3 wpos = (InvModelView * vec4(cspos, 1.0)).xyz;
-        vec4 spos = (ShadowProj * ShadowView * vec4(wpos, 1.0));
-        spos /= spos.w;
+        vec4 spos = (ShadowProj * (ShadowView * vec4(wpos, 1.0)));
 
-        float shade = float(texture(sampler2D(t_shadow, s), spos.xy * 0.5 + 0.5).z * 2.0 - 1.0 > spos.z);
+        spos.xy = spos.xy * 0.5 + 0.5;
+
+        float shadowZ;
+        float shade = shadowTexSmooth(spos.xyz, shadowZ, 0.001);
        
         result.rgb += L.luminance * cosineLambert * shade;
-
-        result.rgb = vec3(shade);
     }
-
-    // Add the ambient
-    //result.rgb += vec3(0.3);
 
     lightingBuffer = result;
 }
