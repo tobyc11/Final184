@@ -14,6 +14,7 @@ layout(set = 1, binding = 2) uniform texture2D t_ao;
 layout(set = 1, binding = 3) uniform texture2D t_depth;
 layout(set = 1, binding = 4) uniform texture2D t_lighting;
 layout(set = 1, binding = 5) uniform texture2D t_shadow;
+layout(rgba8, set = 1, binding = 6) uniform readonly image3D voxels;
 
 layout(set = 1, binding = 6) uniform ExtendedMatrices {
     mat4 InvModelView;
@@ -168,7 +169,12 @@ void main() {
     }
 
     if (inUV.x < 0.25 && inUV.y < 0.25) {
-        color = texture(sampler2D(t_shadow, s), inUV * 4.0).rrr;
+        color = vec3(0.0);
+        //color = texture(sampler2D(t_shadow, s), inUV * 4.0).rrr;
+        for (int z = 0; z < 512; z++) {
+            vec4 voxelColor = imageLoad(voxels, ivec3(inUV * 4.0 * 512.0, z));
+            color = mix(color, voxelColor.rgb, 0.25 * voxelColor.a);
+        }
     }
 
     tonemap(color, 1.0);

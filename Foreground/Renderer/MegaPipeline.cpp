@@ -172,7 +172,7 @@ void CMegaPipeline::Render()
     passCtx = cmdList->CreateParallelRenderContext(VoxelizationPass, { });
     ctx = passCtx->CreateRenderContext(0);
     VoxelizeRenderer.RenderList(*ctx, ShadowSceneView->GetVisiblePrimModelMatrix(),
-                             ShadowSceneView->GetVisiblePrimitiveList());
+                                ShadowSceneView->GetVisiblePrimitiveList());
     ctx->FinishRecording();
     passCtx->FinishRecording();
 
@@ -226,6 +226,7 @@ void CMegaPipeline::Render()
     gtao_color->setImageView("t_depth", GBufferDepth);
     gtao_color->setImageView("t_lighting", lighting_deferred->getRTViews()[0]);
     gtao_color->setImageView("t_shadow", ShadowDepth);
+    gtao_color->setImageView("voxels", VoxelBuffer);
     gtao_color->setStruct("GlobalConstants", sizeof(GlobalConstants), &constants);
     gtao_color->setStruct("ExtendedMatrices", sizeof(ExtendedMatricesConstants),
                                  &matricesConstants);

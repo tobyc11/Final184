@@ -135,12 +135,35 @@ function GBufferPS()
     ]]
 end
 
+function StaticMeshVoxelizeVS()
+    Input "vec3" "Position";
+    Input "vec3" "Normal";
+    Input "vec2" "TexCoord0";
+    Input "uniform" "GlobalConstants";
+    Input "uniform" "PerPrimitiveConstants";
+    Output "vec3" "iPosition";
+    Output "vec3" "iNormal";
+    Output "vec4" "iTangent";
+    Output "vec2" "iTexCoord0";
+    Code [[
+        vec4 pos = ModelMat * vec4(Position, 1);
+        gl_Position = pos / 32.0;
+        iPosition = (pos / pos.w).xyz;
+        iTexCoord0 = TexCoord0;
+        iNormal = normalize(mat3(ViewMat) * mat3(ModelMat) * Normal);
+    ]];
+end
+
 function VoxelPS()
     Input "vec4" "BaseColor";
     Input "vec3" "iNormal";
+    Input "vec3" "iPosition"
     Input "image3D" "voxels";
     Code [[
-        imageStore(voxels, ivec3(gl_FragCoord.xyz), BaseColor.rgba);
+        vec3 voxelizedPosition = iPosition;
+        voxelizedPosition.xy = voxelizedPosition.xy * 0.5 + 0.5;
+        voxelizedPosition *= vec3(512.0);
+        imageStore(voxels, ivec3(voxelizedPosition), BaseColor.rgba);
     ]]
 end
 
