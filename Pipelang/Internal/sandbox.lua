@@ -26,7 +26,7 @@ PL_ENV_MT.__index = function (t, key)
     if _G[key] then
         return _G[key]
     end
-    if key == "VertexAttribs" or key == "ParameterBlock" or key == "Rasterizer" or key == "DepthStencil" or key == "Blend" then
+    if key == "VertexAttribs" or key == "ParameterBlock" or key == "Rasterizer" or key == "DepthStencil" or key == "Blend" or key == "GeometryShader" then
         return function (name)
             local tbl = setmetatable({ type = key, name = name }, PL_CLASS_MT)
             sandbox[name] = tbl

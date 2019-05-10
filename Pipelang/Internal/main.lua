@@ -21,7 +21,7 @@ ParameterBlock "PerPrimitive" : Set(2) {
     Output "uniform" "PerPrimitiveConstants" [[
         mat4 ModelMat;
         mat4 NormalToWorld;
-    ]] : Stages "V";
+    ]] : Stages "VDHG";
 };
 
 function StaticMeshVS()
@@ -40,6 +40,53 @@ function StaticMeshVS()
         iPosition = (pos / pos.w).xyz;
         iTexCoord0 = TexCoord0;
         iNormal = normalize(mat3(ViewMat) * mat3(ModelMat) * Normal);
+    ]];
+end
+
+function StaticMeshPassThruVS()
+    Input "vec3" "Position";
+    Input "vec3" "Normal";
+    Input "vec4" "Tangent";
+    Input "vec2" "TexCoord0";
+    Output "vec3" "vgNormal";
+    Output "vec4" "vgTangent";
+    Output "vec2" "vgTexCoord0";
+    Code [[
+        gl_Position = vec4(Position, 1);
+        vgNormal = Normal;
+		vgTangent = Tangent;
+        vgTexCoord0 = TexCoord0;
+    ]];
+end
+
+GeometryShader "GSTriInTriOut" {
+	InputPrimitive = "triangles";
+	OutputPrimitive = "triangle_strip";
+	MaxVertices = 12;
+};
+
+function VoxelGS()
+    Input "vec3" "vgNormal";
+    Input "vec4" "vgTangent";
+    Input "vec2" "vgTexCoord0";
+    Output "vec3" "iPosition";
+    Output "vec3" "iNormal";
+    Output "vec4" "iTangent";
+    Output "vec2" "iTexCoord0";
+	
+    Code [[
+		int i;
+		for(i = 0; i < gl_in.length(); i++)
+		{
+			vec4 pos = ModelMat * gl_in[i].gl_Position;
+			gl_Position = ProjMat * ViewMat * pos;
+			iPosition = (pos / pos.w).xyz;
+			iNormal = normalize(mat3(ViewMat) * mat3(ModelMat) * vgNormal[i]);
+			iTangent = vec4(0);
+			iTexCoord0 = vgTexCoord0[i];
+			EmitVertex();
+		}
+		EndPrimitive();
     ]];
 end
 
