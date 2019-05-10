@@ -257,6 +257,7 @@ bool CPipelangLibrary::GetPipeline(RHI::CPipelineDesc& desc, const std::vector<s
     }
     desc.VS = Parent->GetShaderCache()->RetrieveShader(key + "_VS");
     desc.PS = Parent->GetShaderCache()->RetrieveShader(key + "_PS");
+    desc.GS = Parent->GetShaderCache()->RetrieveShader(key + "_GS");
     auto plIter = Parent->GetPipelineLayoutCache().find(key);
     if (plIter != Parent->GetPipelineLayoutCache().end())
         desc.Layout = plIter->second;
@@ -357,6 +358,26 @@ bool CPipelangLibrary::GetPipeline(RHI::CPipelineDesc& desc, const std::vector<s
         {
             retval = false;
             goto exit;
+        }
+
+        if (result["geometry"])
+        {
+            std::string gs = result["gs"];
+
+            ofs.open(key + "_GS.glsl");
+            ofs << gs;
+            ofs.close();
+
+            env.MainSourcePath = key + "_GS.glsl";
+            env.ShaderStage = "geometry";
+
+            desc.GS = Parent->GetShaderCache()->RetrieveOrCompileShader(key + "_GS", env);
+
+            if (!desc.GS)
+            {
+                retval = false;
+                goto exit;
+            }
         }
     }
 

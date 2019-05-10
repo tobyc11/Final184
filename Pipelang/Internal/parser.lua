@@ -12,7 +12,7 @@ local stage_subclass = { vertex_attribs = "vertex_attribs", VertexAttribs = "ver
                          parameter_block = "parameter_block", ParameterBlock = "parameter_block",
                          rasterizer = "rasterizer", Rasterizer = "rasterizer",
                          depthstencil = "depthstencil", DepthStencil = "depthstencil",
-                         blend = "blend", Blend = "blend" }
+                         blend = "blend", Blend = "blend", GeometryShader = "geometry_shader" }
 local shader_stage = { undefined = "undefined", vertex = "vertex", domain = "domain", hull = "hull",
                        geometry = "geometry", pixel = "pixel", compute = "compute" }
 

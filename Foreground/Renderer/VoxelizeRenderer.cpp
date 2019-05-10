@@ -42,8 +42,9 @@ void CVoxelizeRenderer::PreparePrimitiveResources(std::shared_ptr<CPrimitive> pr
             RHI::CPipelineDesc desc;
             bool ok = lib.GetPipeline(desc,
                                       { "EngineCommon", "StandardTriMesh", "PerPrimitive",
-                                        "StaticMeshVS", "DefaultRasterizer", "BasicMaterialParams",
-                                        "BasicMaterial", "VoxelData", "VoxelPS" });
+                                        "StaticMeshPassThruVS", "GSTriInTriOut", "VoxelGS",
+                                        "DefaultRasterizer", "BasicMaterialParams", "BasicMaterial",
+                                        "VoxelData", "VoxelPS" });
 
             if (!ok)
                 return;

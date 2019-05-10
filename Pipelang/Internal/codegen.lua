@@ -31,10 +31,16 @@ function codegen.annotate_parse_tree(stage_list)
                 var.used = false
             end
         elseif stage.class == "fixed" then
+            if stage.subclass == "geometry_shader" then
+                curr_stage = parser.shader_stage.geometry
+				stage.stage = parser.shader_stage.geometry
+            end
             if stage.subclass == "rasterizer" then
                 curr_stage = parser.shader_stage.pixel
             end
         elseif stage.class == "programmable" then
+			codegen.result[curr_stage] = true
+
             stage.inputs = {}
             stage.outputs = {}
             stage.code = ""
@@ -80,6 +86,12 @@ function codegen.annotate_parse_tree(stage_list)
                     end
                 end
 
+                if k == "Header" then
+                    return function (header)
+                        stage.header = stage.header .. header
+                    end
+                end
+
                 return nil
             end
             setfenv(stage.fn, setmetatable({}, PROG_MT))()
@@ -103,6 +115,10 @@ function codegen.glsl_gen(stage_list, curr_stage)
 
     function glsl_src:emit_block(content)
         self.header = self.header .. "{\n" .. content .. "};\n";
+    end
+	
+    function glsl_src:emit_header(content)
+        self.header = self.header .. content .. "\n";
     end
 
     function glsl_src:emit_stmts_main(content)
@@ -136,6 +152,9 @@ function codegen.glsl_gen(stage_list, curr_stage)
         if obj.type == "uniform" then
             self:emit_block(obj.code)
         else
+			if obj.location and input and curr_stage == "geometry" then
+				self:emit_header("[]");
+			end
             self:emit_semicolon()
         end
     end
@@ -191,15 +210,26 @@ function codegen.glsl_gen(stage_list, curr_stage)
             end
 
             glsl_src:emit_stmts_main(stage.code)
-        end
+        elseif stage.class == "fixed" and stage.subclass == "geometry_shader" then
+			if curr_stage == "geometry" then
+				glsl_src:emit_header(string.format([[
+layout(%s) in;
+layout(%s, max_vertices=%d) out;
+]], stage.states.InputPrimitive, stage.states.OutputPrimitive, stage.states.MaxVertices))
+			end
+		end
     end
     return glsl_src:get_string()
 end
 
 function codegen.make_pipeline(stage_list)
-    codegen.annotate_parse_tree(stage_list)
     codegen.result = {}
+    codegen.annotate_parse_tree(stage_list)
     codegen.result.vs = codegen.glsl_gen(stage_list, "vertex")
     codegen.result.ps = codegen.glsl_gen(stage_list, "pixel")
+	if codegen.result.geometry then
+		codegen.result.gs = codegen.glsl_gen(stage_list, "geometry")
+	end
+	print_table(codegen.result)
     return true
 end
