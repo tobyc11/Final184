@@ -120,6 +120,10 @@ vec3 getIndirect(vec3 wpos, vec3 wnorm, float randSeed, inout HitState hit) {
     mat3 o2w = make_coord_space(wnorm);
     direction = o2w * direction;
 
+    if (dot(direction, wnorm) < 0.0) direction = -direction;
+
+    float NdotD = dot(direction, wnorm);
+
     mat4 w2voxel = VoxelProj * VoxelView;
 
     vec3 march_pos = wpos + direction * (1.0 + rands.y) * step_size / dot(direction, wnorm);
@@ -130,7 +134,7 @@ vec3 getIndirect(vec3 wpos, vec3 wnorm, float randSeed, inout HitState hit) {
 
     ivec3 starting_voxel = ivec3(startingVoxelPos);
 
-    for (int i = 0; i < 40; i++) {
+    for (int i = 0; i < 80; i++) {
         march_pos += direction * step_size;
 
         vec3 voxelPos = (w2voxel * vec4(march_pos, 1.0)).xyz;
@@ -150,7 +154,7 @@ vec3 getIndirect(vec3 wpos, vec3 wnorm, float randSeed, inout HitState hit) {
             float shadowZ = texelFetch(sampler2D(t_shadow, s), ivec2(spos_proj.xy * 2048.0), 0).x;
             float shade = step(spos_proj.z + 0.005, shadowZ);
 
-            Lo += lambertBrdf(-sun.position, voxNorm, sun.luminance * shade, voxColor) / max(0.01, dot(direction, wnorm));
+            Lo += lambertBrdf(-sun.position, voxNorm, sun.luminance * shade, voxColor) / max(0.01, NdotD);
 
             hit.wpos = march_pos;
             hit.wnorm = voxNorm;
@@ -159,6 +163,10 @@ vec3 getIndirect(vec3 wpos, vec3 wnorm, float randSeed, inout HitState hit) {
 
             break;
         }
+    }
+
+    if (!hit.hit) {
+        Lo += vec3(0.7, 0.8, 1.0) * 0.2 / max(0.01, NdotD) * smoothstep(0.0, 0.01, NdotD);
     }
 
     return Lo;
@@ -183,8 +191,6 @@ void main() {
     indirect += getIndirect(wpos, wnorm, 2.0, state);
     indirect += getIndirect(wpos, wnorm, 3.0, state);
     indirect *= 0.25;
-
-    indirect += vec3(0.01);
 
     // And then TAA
     vec4 prevCspos = prevModelView * vec4(wpos, 1.0);
