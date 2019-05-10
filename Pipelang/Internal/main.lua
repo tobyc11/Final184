@@ -42,10 +42,10 @@ function StaticMeshVS()
     Output "vec2" "iTexCoord0";
     Code [[
         const vec2 taaOffsets[4] = vec2 [] (
-	        vec2(-0.326212, -0.40581),
-	        vec2(-0.203345,  0.620716),
-	        vec2(0.519456,   0.767022),
-	        vec2(0.89642,    0.412458)
+	        vec2(-1.0, 0.0),
+	        vec2( 1.0, 0.0),
+	        vec2( 0.0, 1.0),
+	        vec2( 0.0,-1.0)
         );
 
         vec4 pos = ModelMat * vec4(Position, 1);

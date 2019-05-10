@@ -300,7 +300,7 @@ namespace Foreground
         lighting_deferred->endRender();
 
         gtao_color->beginRender(cmdList);
-        gtao_color->setSampler("s", GlobalLinearSampler);
+        gtao_color->setSampler("s", GlobalLinearSamplerClamped);
         gtao_color->setImageView("t_albedo", GBuffer0);
         gtao_color->setImageView("t_ao", gtao_blur->getRTViews()[0]);
         gtao_color->setImageView("t_depth", GBufferDepth);
@@ -525,15 +525,17 @@ namespace Foreground
             width, height);
 
         taaImageA = RenderDevice->CreateImage2D(
-            EFormat::R8G8B8A8_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
+            EFormat::R16G16B16A16_SFLOAT,
+            EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
             width, height);
 
         taaImageB = RenderDevice->CreateImage2D(
-            EFormat::R8G8B8A8_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled, width,
+            EFormat::R16G16B16A16_SFLOAT,
+            EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled, width,
             height);
 
         CImageViewDesc taaImageViewDesc;
-        taaImageViewDesc.Format = EFormat::R8G8B8A8_UNORM;
+        taaImageViewDesc.Format = EFormat::R16G16B16A16_SFLOAT;
         taaImageViewDesc.Type = EImageViewType::View2D;
         taaImageViewDesc.Range.Set(0, 1, 0, 1);
         taaImageView = RenderDevice->CreateImageView(taaImageViewDesc, taaImageB);
@@ -559,7 +561,7 @@ namespace Foreground
         gtao_color = std::shared_ptr<CMaterial>(
             new CMaterial(RenderDevice, "Common/Quad.vert.spv", "GTAO/color.frag.spv"));
 
-        gtao_color->renderTargets = { { fbImage }, { taaImageA } };
+        gtao_color->renderTargets = { { fbImage }, { taaImageA, EFormat::R16G16B16A16_SFLOAT } };
         gtao_color->createPipeline(width, height);
 
         lighting_deferred = std::shared_ptr<CMaterial>(

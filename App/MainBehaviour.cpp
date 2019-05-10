@@ -39,9 +39,9 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
     
     self->directionalLightNode = self->scene->GetRootNode()->CreateChildNode();
     self->directionalLightNode->SetName("directionalLightNode");
-    self->lightDirectional = std::make_shared<CLight>(tc::Color(1.0, 0.95, 0.87), 4.0, ELightType::Directional);
+    self->lightDirectional = std::make_shared<CLight>(tc::Color(1.1, 0.93, 0.81), 4.0, ELightType::Directional);
     self->directionalLightNode->AddLight(self->lightDirectional);
-    self->directionalLightNode->Rotate(tc::Quaternion(-70.0, -30.0, 50.0), ETransformSpace::World);
+    self->directionalLightNode->Rotate(tc::Quaternion(-60.0, -30.0, 50.0), ETransformSpace::World);
     self->directionalLightNode->Translate(tc::Vector3(0.0, 16.0, 0.0), ETransformSpace::World);
     self->shadowCamera = std::make_shared<CCamera>(true);
     self->shadowCamera->SetFarClip(20.0);
@@ -59,8 +59,8 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
     self->voxelizerCamera->SetFarClip(20.0);
     self->voxelizerCamera->SetNearClip(1.0);
     self->voxelizerCamera->SetAspectRatio(1.0);
-    self->voxelizerCamera->SetMagX(16.0);
-    self->voxelizerCamera->SetMagY(16.0);
+    self->voxelizerCamera->SetMagX(20.0);
+    self->voxelizerCamera->SetMagY(20.0);
     self->voxelizerCamNode->SetCamera(self->voxelizerCamera);
 
     CglTFSceneImporter importer(self->scene, *game->device);
@@ -83,8 +83,8 @@ static void physics_tick(std::shared_ptr<CBehaviour> selfref, Game* game, double
 {
     auto self = dynamic_pointer_cast<MainBehaviour>(selfref);
 
-    self->directionalLightNode->SetRotation(
-        tc::Quaternion(-80.0, fmod(elapsedTime * 6.0, 360.0), 0.0));
+    self->directionalLightNode->SetRotation(tc::Quaternion(self->directionalLightNode->GetRotation().EulerAngles().x,
+                       fmod(elapsedTime * 6.0, 360.0), 0.0));
 
     float moveSpeed = 4;
     float moveDpos = moveSpeed / 120;

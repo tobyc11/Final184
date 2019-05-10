@@ -225,10 +225,10 @@ void main() {
     if (length(wpos) > 256.0) {
         // Sky
         color = scatter(vec3(0.0, 1e3, 0.0), normalize(wpos), -normalize(sun.position), Ra);
+    } else {
+        // Volumetric lighting
+        VL(color, wpos, wpos_cam);
     }
-
-    // Volumetric lighting
-    VL(color, wpos, wpos_cam);
 
     tonemap(color, 1.0);
 
@@ -240,14 +240,27 @@ void main() {
     prevProjPos.st = prevProjPos.st * 0.5 + 0.5;
 
     vec2 reprojUV = prevProjPos.st;
+    vec2 velocity = reprojUV - inUV;
 
     if (clamp(reprojUV, vec2(0.0), vec2(1.0)) == reprojUV) {
         float blendWeight = 0.6;
-        vec3 prevColor = texture(sampler2D(taaBuffer, s), reprojUV).rgb;
-        color = mix(color, prevColor, blendWeight);
+        vec4 prevColor = texture(sampler2D(taaBuffer, s), reprojUV);
+        float prevDepth = prevColor.w;
+        blendWeight *= smoothstep(0.0, 1.0, 1.0 - abs(prevDepth + cspos.z) * length(velocity) * 8.0);
+
+        color = clamp(mix(color, prevColor.rgb, blendWeight), vec3(0.0), vec3(16.0));
     }
 
-    outTAA = vec4(color, 1.0);
+    outTAA = vec4(color, -cspos.z);
+
+    // Then motion blur
+    vec2 delta = velocity * 0.125;
+    vec2 sample_uv = inUV + delta * rand21(gl_FragCoord.xy);
+    for (int i = 0; i < 8; i++) {
+        sample_uv += delta;
+        color += texture(sampler2D(taaBuffer, s), sample_uv).rgb;
+    }
+    color /= 9.0;
 
     outColor = vec4(color, 1.0);
 }

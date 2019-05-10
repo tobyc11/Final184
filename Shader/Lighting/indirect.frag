@@ -57,14 +57,14 @@ vec3 getNormal(vec2 uv) {
     return normalize(raw);
 }
 
-vec3 lambertBrdf(vec3 wi, vec3 N, vec3 Li, vec3 albedo) {
-    return abs(dot(wi, N)) * Li * albedo;
+vec3 lambertBrdf(vec3 wi, vec3 N, vec3 albedo) {
+    return abs(dot(wi, N)) * albedo;
 }
 
 struct HitState {
     vec3 wpos;
     vec3 wnorm;
-    vec3 albedo;
+    vec3 brdf;
     bool hit;
 };
 
@@ -134,7 +134,8 @@ vec3 getIndirect(vec3 wpos, vec3 wnorm, float randSeed, inout HitState hit) {
 
     ivec3 starting_voxel = ivec3(startingVoxelPos);
 
-    for (int i = 0; i < 80; i++) {
+    int i = 0;
+    for (; i < 60; i++) {
         march_pos += direction * step_size;
 
         vec3 voxelPos = (w2voxel * vec4(march_pos, 1.0)).xyz;
@@ -154,23 +155,25 @@ vec3 getIndirect(vec3 wpos, vec3 wnorm, float randSeed, inout HitState hit) {
             float shadowZ = texelFetch(sampler2D(t_shadow, s), ivec2(spos_proj.xy * 2048.0), 0).x;
             float shade = step(spos_proj.z + 0.005, shadowZ);
 
-            Lo += lambertBrdf(-sun.position, voxNorm, sun.luminance * shade, voxColor) / max(0.01, NdotD);
-
+            vec3 r = lambertBrdf(-sun.position, voxNorm, voxColor) / max(0.01, NdotD);
+            hit.brdf = r;
+            Lo += sun.luminance * shade * r;
             hit.wpos = march_pos;
             hit.wnorm = voxNorm;
-            hit.albedo = voxColor;
             hit.hit = true;
 
             break;
         }
     }
 
-    if (!hit.hit) {
-        Lo += vec3(0.7, 0.8, 1.0) * 0.2 / max(0.01, NdotD) * smoothstep(0.0, 0.01, NdotD);
+    if (!hit.hit && i == 60) {
+        Lo += vec3(0.7, 0.8, 1.0) * 0.4 / max(0.01, NdotD) * smoothstep(0.0, 0.01, NdotD);
     }
 
     return Lo;
 }
+
+const bool second_bounce = true;
 
 void main() {
     vec3 cspos = getCSpos(inUV);
@@ -187,9 +190,25 @@ void main() {
     vec3 indirect;
 
     indirect  = getIndirect(wpos, wnorm, 0.0, state);
-    indirect += getIndirect(wpos, wnorm, 1.0, state);
+    if (state.hit && second_bounce) {
+        indirect += state.brdf * getIndirect(state.wpos, state.wnorm, 1.0, state);
+    }
+
     indirect += getIndirect(wpos, wnorm, 2.0, state);
-    indirect += getIndirect(wpos, wnorm, 3.0, state);
+    if (state.hit && second_bounce) {
+        indirect += state.brdf * getIndirect(state.wpos, state.wnorm, 3.0, state);
+    }
+
+    indirect += getIndirect(wpos, wnorm, 4.0, state);
+    if (state.hit && second_bounce) {
+        indirect += state.brdf * getIndirect(state.wpos, state.wnorm, 5.0, state);
+    }
+
+    indirect += getIndirect(wpos, wnorm, 6.0, state);
+    if (state.hit && second_bounce) {
+        indirect += state.brdf * getIndirect(state.wpos, state.wnorm, 7.0, state);
+    }
+
     indirect *= 0.25;
 
     // And then TAA
@@ -203,9 +222,12 @@ void main() {
 
     if (clamp(reprojUV, vec2(0.0), vec2(1.0)) == reprojUV) {
         float blendWeight = 0.95;
-        vec3 prevColor = texture(sampler2D(temporal, s), reprojUV).rgb;
-        indirect = mix(indirect, prevColor, blendWeight);
+        vec4 prevColor = texture(sampler2D(temporal, s), reprojUV);
+        float prevDepth = prevColor.w;
+        blendWeight *= smoothstep(0.0, 1.0, 1.0 - abs(prevDepth + cspos.z));
+
+        indirect = clamp(mix(indirect, prevColor.rgb, blendWeight), vec3(0.0), vec3(16.0));
     }
 
-    outColor = vec4(indirect, 1.0);
+    outColor = vec4(indirect, -cspos.z);
 }
