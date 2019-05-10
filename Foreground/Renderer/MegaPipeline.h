@@ -19,7 +19,8 @@ public:
     explicit CMegaPipeline(RHI::CSwapChain::Ref swapChain);
 
     void SetSceneView(std::unique_ptr<CSceneView> sceneView,
-                      std::unique_ptr<CSceneView> shadowView);
+                      std::unique_ptr<CSceneView> shadowView,
+                      std::unique_ptr<CSceneView> voxelizerSceneView);
 
     void Resize();
     void Render();
@@ -39,6 +40,7 @@ private:
     RHI::CSwapChain::Ref SwapChain;
     std::unique_ptr<CSceneView> SceneView;
     std::unique_ptr<CSceneView> ShadowSceneView;
+    std::unique_ptr<CSceneView> VoxelizerSceneView;
 
     RHI::CImage::Ref VoxelImage;
 

@@ -55,10 +55,12 @@ CMegaPipeline::CMegaPipeline(RHI::CSwapChain::Ref swapChain)
 }
 
 void CMegaPipeline::SetSceneView(std::unique_ptr<CSceneView> sceneView,
-                                 std::unique_ptr<CSceneView> shadowView)
+                                 std::unique_ptr<CSceneView> shadowView,
+                                 std::unique_ptr<CSceneView> voxelizerSceneView)
 {
     SceneView = std::move(sceneView);
     ShadowSceneView = std::move(shadowView);
+    VoxelizerSceneView = std::move(voxelizerSceneView);
 }
 
 void CMegaPipeline::Resize()
@@ -122,6 +124,8 @@ struct alignas(16) ExtendedMatricesConstants
     tc::Matrix4 InvModelView;
     tc::Matrix4 ShadowView;
     tc::Matrix4 ShadowProjection;
+    tc::Matrix4 VoxelView;
+    tc::Matrix4 VoxelProjection;
 };
 
 void CMegaPipeline::Render()
@@ -140,6 +144,8 @@ void CMegaPipeline::Render()
     SceneView->PrepareToRender();
 
     ShadowSceneView->PrepareToRender();
+
+    VoxelizerSceneView->PrepareToRender();
 
     auto cmdList = RenderQueue->CreateCommandList();
     cmdList->Enqueue();
@@ -173,8 +179,8 @@ void CMegaPipeline::Render()
 
     passCtx = cmdList->CreateParallelRenderContext(VoxelizationPass, {});
     ctx = passCtx->CreateRenderContext(0);
-    VoxelizeRenderer.RenderList(*ctx, ShadowSceneView->GetVisiblePrimModelMatrix(),
-                                ShadowSceneView->GetVisiblePrimitiveList());
+    VoxelizeRenderer.RenderList(*ctx, VoxelizerSceneView->GetVisiblePrimModelMatrix(),
+                                VoxelizerSceneView->GetVisiblePrimitiveList());
     ctx->FinishRecording();
     passCtx->FinishRecording();
 
@@ -198,6 +204,8 @@ void CMegaPipeline::Render()
     matricesConstants.InvModelView = SceneView->GetViewConstants().ViewMat.Inverse();
     matricesConstants.ShadowProjection = ShadowSceneView->GetViewConstants().ProjMat;
     matricesConstants.ShadowView = ShadowSceneView->GetViewConstants().ViewMat;
+    matricesConstants.VoxelProjection = VoxelizerSceneView->GetViewConstants().ProjMat;
+    matricesConstants.VoxelView = VoxelizerSceneView->GetViewConstants().ViewMat;
 
     lighting_deferred->beginRender(cmdList);
     lighting_deferred->setSampler("s", GlobalLinearSampler);
@@ -240,6 +248,7 @@ void CMegaPipeline::Render()
 
     SceneView->FrameFinished();
     ShadowSceneView->FrameFinished();
+    VoxelizerSceneView->FrameFinished();
 
     RHI::CSwapChainPresentInfo info;
     SwapChain->Present(info);
@@ -261,6 +270,9 @@ void CMegaPipeline::BindEngineCommonForView(RHI::IRenderContext& context, uint32
                          "GlobalConstants");
     else if (viewIndex == 1)
         pb.BindConstants(EngineCommonDS, &ShadowSceneView->GetViewConstants(),
+                         sizeof(CViewConstants), "GlobalConstants");
+    else if (viewIndex == 2)
+        pb.BindConstants(EngineCommonDS, &VoxelizerSceneView->GetViewConstants(),
                          sizeof(CViewConstants), "GlobalConstants");
 
     context.BindRenderDescriptorSet(0, *EngineCommonDS);

@@ -39,7 +39,7 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
     
     self->directionalLightNode = self->scene->GetRootNode()->CreateChildNode();
     self->directionalLightNode->SetName("directionalLightNode");
-    self->lightDirectional = std::make_shared<CLight>(tc::Color(1.0, 0.95, 0.87), 2.0, ELightType::Directional);
+    self->lightDirectional = std::make_shared<CLight>(tc::Color(1.0, 0.95, 0.87), 4.0, ELightType::Directional);
     self->directionalLightNode->AddLight(self->lightDirectional);
     self->directionalLightNode->Rotate(tc::Quaternion(-80.0, -30.0, 50.0), ETransformSpace::World);
     self->directionalLightNode->Translate(tc::Vector3(0.0, 16.0, 0.0), ETransformSpace::World);
@@ -51,13 +51,26 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
     self->shadowCamera->SetMagY(16.0);
     self->directionalLightNode->SetCamera(self->shadowCamera);
 
+    self->voxelizerCamNode = self->scene->GetRootNode()->CreateChildNode();
+    self->voxelizerCamNode->SetName("voxelizerCamNode");
+    self->voxelizerCamNode->Rotate(tc::Quaternion(-90.0, 0.0, 0.0), ETransformSpace::World);
+    self->voxelizerCamNode->Translate(tc::Vector3(0.0, 16.0, 0.0), ETransformSpace::World);
+    self->voxelizerCamera = std::make_shared<CCamera>(true);
+    self->voxelizerCamera->SetFarClip(20.0);
+    self->voxelizerCamera->SetNearClip(1.0);
+    self->voxelizerCamera->SetAspectRatio(1.0);
+    self->voxelizerCamera->SetMagX(16.0);
+    self->voxelizerCamera->SetMagY(16.0);
+    self->voxelizerCamNode->SetCamera(self->voxelizerCamera);
+
     CglTFSceneImporter importer(self->scene, *game->device);
     importer.ImportFile(CResourceManager::Get().FindFile("Models/Sponza.gltf"));
 
     self->renderPipeline =
         CForegroundBootstrapper::CreateRenderPipeline(game->swapChain, EForegroundPipeline::Mega);
     self->renderPipeline->SetSceneView(std::make_unique<CSceneView>(self->cameraNode),
-                                       std::make_unique<CSceneView>(self->directionalLightNode));
+                                       std::make_unique<CSceneView>(self->directionalLightNode),
+                                       std::make_unique<CSceneView>(self->voxelizerCamNode));
 
     self->scene->UpdateAccelStructure();
 }

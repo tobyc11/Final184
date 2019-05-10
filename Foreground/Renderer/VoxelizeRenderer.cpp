@@ -103,8 +103,10 @@ void CVoxelizeRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4
         {
             context.BindRenderPipeline(*iter->second.Pipeline);
             if (!BoundSet0)
-                Parent->BindEngineCommonForView(context, 1);
-            BoundSet0 = true;
+            {
+                Parent->BindEngineCommonForView(context, 2);
+                BoundSet0 = true;
+            }
 
             basicMat->Bind(context);
 

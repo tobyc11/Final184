@@ -23,8 +23,10 @@ public:
     CSceneNode* cameraNode;
     std::shared_ptr<CCamera> camera;
     std::shared_ptr<CCamera> shadowCamera;
+    std::shared_ptr<CCamera> voxelizerCamera;
     CSceneNode* pointLightNode;
     CSceneNode* directionalLightNode;
+    CSceneNode* voxelizerCamNode;
     std::shared_ptr<CLight> lightPoint;
     std::shared_ptr<CLight> lightDirectional;
 

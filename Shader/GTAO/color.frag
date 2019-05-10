@@ -20,6 +20,8 @@ layout(set = 1, binding = 7) uniform ExtendedMatrices {
     mat4 InvModelView;
     mat4 ShadowView;
     mat4 ShadowProj;
+    mat4 VoxelView;
+    mat4 VoxelProj;
 };
 
 layout(set = 1, binding = 8) uniform Sun {
@@ -171,22 +173,16 @@ void main() {
 
     if (inUV.x < 0.3333333 && inUV.y < 0.333333) {
         color = vec3(0.0);
-        
-        //color = texture(sampler2D(t_shadow, s), inUV * 4.0).rrr;
-        //for (int z = 0; z < 512; z++) {
-        //    vec4 voxelColor = imageLoad(voxels, ivec3(vec2(inUV * 3.0 * 512.0), z));
-        //    color = mix(color, voxelColor.rgb, 0.25 * voxelColor.a);
-        //}
 
         vec2 uv = inUV * 3.0;
         
         vec3 cspos = getCSpos(uv);
         vec3 wpos = (InvModelView * vec4(cspos, 1.0)).xyz;
-        vec3 spos = (ShadowProj * (ShadowView * vec4(wpos, 1.0))).xyz;
+        vec3 spos = (VoxelProj * (VoxelView * vec4(wpos, 1.0))).xyz;
 
         vec3 cspos_cam = vec3(0.0);
         vec3 wpos_cam = (InvModelView * vec4(cspos_cam, 1.0)).xyz;
-        vec3 spos_cam = (ShadowProj * (ShadowView * vec4(wpos_cam, 1.0))).xyz;
+        vec3 spos_cam = (VoxelProj * (VoxelView * vec4(wpos_cam, 1.0))).xyz;
 
         spos.xy = spos.xy * 0.5 + 0.5;
         spos *= 512.0;
@@ -195,9 +191,9 @@ void main() {
         spos_cam *= 512.0;
 
         vec3 march_pos = spos_cam;
-        vec3 march_delta = (spos - spos_cam) / 256.0;
+        vec3 march_delta = (spos - spos_cam) / 240.0;
 
-        march_pos += march_delta * rand21(uv);
+        march_pos += march_delta * rand21(inUV);
 
         for (int i = 0; i < 256; i++) {
             march_pos += march_delta;
