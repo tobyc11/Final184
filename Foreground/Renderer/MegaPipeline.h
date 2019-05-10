@@ -55,9 +55,13 @@ private:
     uint32_t width;
     uint32_t height;
 
+    bool initial = true;
+
     RHI::CImage::Ref VoxelImage;
     RHI::CImage::Ref taaImageA;
     RHI::CImage::Ref taaImageB;
+    RHI::CImage::Ref indirectTemporalImage;
+    RHI::CImage::Ref indirectImage;
 
     RHI::CImageView::Ref GBuffer0;
     RHI::CImageView::Ref GBuffer1;
@@ -67,12 +71,14 @@ private:
     RHI::CImageView::Ref ShadowDepth;
     RHI::CImageView::Ref VoxelBuffer;
     RHI::CImageView::Ref taaImageView;
+    RHI::CImageView::Ref indirectTemporal;
     RHI::CRenderPass::Ref GBufferPass;
     RHI::CRenderPass::Ref VoxelizationPass;
     RHI::CRenderPass::Ref ZOnlyPass;
 
     RHI::CSampler::Ref GlobalNiceSampler;
     RHI::CSampler::Ref GlobalLinearSampler;
+    RHI::CSampler::Ref GlobalLinearSamplerClamped;
     RHI::CSampler::Ref GlobalNearestSampler;
     RHI::CPipeline::Ref BlitPipeline;
 
@@ -86,6 +92,9 @@ private:
 
     std::shared_ptr<CMaterial> lighting_deferred;
     std::shared_ptr<CMaterial> lighting_indirect;
+    
+    std::shared_ptr<CMaterial> indirect_blurX;
+    std::shared_ptr<CMaterial> indirect_blurY;
 
     RHI::CDescriptorSet::Ref EngineCommonDS;
 };

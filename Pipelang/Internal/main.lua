@@ -221,7 +221,7 @@ function BasicZOnlyMaterial()
 end
 
 ParameterBlock "VoxelData" : Set(3) {
-    Output "uimage3D" "voxels" : Stages "P" : Format "rg32ui";
+    Output "uimage3D" "voxels" : Stages "P" : Format "rg16ui";
 };
 
 function GBufferPS()
@@ -266,7 +266,11 @@ function VoxelPS()
 			voxelizedPosition.z = maxDepth - gl_FragCoord.y;
 		}
 
-		imageStore(voxels, ivec3(voxelizedPosition), uvec4(packUnorm4x8(BaseColor), packSnorm4x8(vec4(iNormal, 0.0)), 0, 0));
+        // RGB 565
+        uint packedColor = (uint(BaseColor.r * 31) << 11) | (uint(BaseColor.g * 63) << 5) | uint(BaseColor.b * 31);
+        uint packedNormal = (uint(iNormal.r * 16 + 15) << 11) | (uint(iNormal.g * 32 + 31) << 5) | uint(iNormal.b * 16 + 15);
+
+		imageStore(voxels, ivec3(voxelizedPosition), uvec4(packedColor, packedNormal, 0, 0));
     ]]
 end
 
