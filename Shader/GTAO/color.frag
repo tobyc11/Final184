@@ -16,13 +16,13 @@ layout(set = 1, binding = 4) uniform texture2D t_lighting;
 layout(set = 1, binding = 5) uniform texture2D t_shadow;
 layout(rgba8, set = 1, binding = 6) uniform readonly image3D voxels;
 
-layout(set = 1, binding = 6) uniform ExtendedMatrices {
+layout(set = 1, binding = 7) uniform ExtendedMatrices {
     mat4 InvModelView;
     mat4 ShadowView;
     mat4 ShadowProj;
 };
 
-layout(set = 1, binding = 7) uniform Sun {
+layout(set = 1, binding = 8) uniform Sun {
     vec3 luminance;
     vec3 position; // (or direction, for directional light)
 } sun;
@@ -168,12 +168,45 @@ void main() {
         color = scatter(vec3(0.0, 1e3, 0.0), normalize(wpos), -normalize(sun.position), Ra);
     }
 
-    if (inUV.x < 0.25 && inUV.y < 0.25) {
+
+    if (inUV.x < 0.3333333 && inUV.y < 0.333333) {
         color = vec3(0.0);
+        
         //color = texture(sampler2D(t_shadow, s), inUV * 4.0).rrr;
-        for (int z = 0; z < 512; z++) {
-            vec4 voxelColor = imageLoad(voxels, ivec3(inUV * 4.0 * 512.0, z));
-            color = mix(color, voxelColor.rgb, 0.25 * voxelColor.a);
+        //for (int z = 0; z < 512; z++) {
+        //    vec4 voxelColor = imageLoad(voxels, ivec3(vec2(inUV * 3.0 * 512.0), z));
+        //    color = mix(color, voxelColor.rgb, 0.25 * voxelColor.a);
+        //}
+
+        vec2 uv = inUV * 3.0;
+        
+        vec3 cspos = getCSpos(uv);
+        vec3 wpos = (InvModelView * vec4(cspos, 1.0)).xyz;
+        vec3 spos = (ShadowProj * (ShadowView * vec4(wpos, 1.0))).xyz;
+
+        vec3 cspos_cam = vec3(0.0);
+        vec3 wpos_cam = (InvModelView * vec4(cspos_cam, 1.0)).xyz;
+        vec3 spos_cam = (ShadowProj * (ShadowView * vec4(wpos_cam, 1.0))).xyz;
+
+        spos.xy = spos.xy * 0.5 + 0.5;
+        spos *= 512.0;
+
+        spos_cam.xy = spos_cam.xy * 0.5 + 0.5;
+        spos_cam *= 512.0;
+
+        vec3 march_pos = spos_cam;
+        vec3 march_delta = (spos - spos_cam) / 256.0;
+
+        march_pos += march_delta * rand21(uv);
+
+        for (int i = 0; i < 256; i++) {
+            march_pos += march_delta;
+            vec4 voxelColor = imageLoad(voxels, ivec3(march_pos));
+
+            if (voxelColor.a > 0.005) {
+                color = voxelColor.rgb;
+                break;
+            }
         }
     }
 

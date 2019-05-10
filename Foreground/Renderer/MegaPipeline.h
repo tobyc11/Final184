@@ -52,6 +52,8 @@ private:
     std::unique_ptr<CSceneView> SceneView;
     std::unique_ptr<CSceneView> ShadowSceneView;
 
+    RHI::CImage::Ref VoxelImage;
+
     RHI::CImageView::Ref GBuffer0;
     RHI::CImageView::Ref GBuffer1;
     // RHI::CImageView::Ref GBuffer2;

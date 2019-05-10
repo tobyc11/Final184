@@ -127,7 +127,7 @@ struct alignas(16) ExtendedMatricesConstants
 void CMegaPipeline::Render()
 {
     // Or render some test image?
-    if (!SceneView)
+    if (!SceneView || !VoxelImage)
         return;
 
     if (!SwapChain->AcquireNextImage())
@@ -169,7 +169,11 @@ void CMegaPipeline::Render()
     ctx->FinishRecording();
     passCtx->FinishRecording();
 
-    passCtx = cmdList->CreateParallelRenderContext(VoxelizationPass, { });
+    auto copyCtx = cmdList->CreateCopyContext();
+    copyCtx->ClearImage(*VoxelImage, { 0, 0, 0, 0 }, { 0, 1, 0, 1 });
+    copyCtx->FinishRecording();
+
+    passCtx = cmdList->CreateParallelRenderContext(VoxelizationPass, {});
     ctx = passCtx->CreateRenderContext(0);
     VoxelizeRenderer.RenderList(*ctx, ShadowSceneView->GetVisiblePrimModelMatrix(),
                                 ShadowSceneView->GetVisiblePrimitiveList());
@@ -390,13 +394,14 @@ void CMegaPipeline::CreateVoxelizePass()
 {
     using namespace RHI;
 
-    auto voxelVolume = RenderDevice->CreateImage3D(EFormat::R8G8B8A8_UNORM, EImageUsageFlags::Storage, 512, 512, 512);
+    VoxelImage = RenderDevice->CreateImage3D(EFormat::R8G8B8A8_UNORM,
+                                                  EImageUsageFlags::Storage, 512, 512, 512);
 
     CImageViewDesc voxelViewDesc;
     voxelViewDesc.Format = EFormat::R8G8B8A8_UNORM;
     voxelViewDesc.Type = EImageViewType::View3D;
     voxelViewDesc.Range.Set(0, 1, 0, 1);
-    VoxelBuffer = RenderDevice->CreateImageView(voxelViewDesc, voxelVolume);
+    VoxelBuffer = RenderDevice->CreateImageView(voxelViewDesc, VoxelImage);
 
     CRenderPassDesc rpDesc;
     rpDesc.NextSubpass().ColorAttachments.clear();
