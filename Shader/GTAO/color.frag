@@ -228,7 +228,9 @@ void main() {
     }
 
     // Volumetric lighting
-    // VL(color, wpos, wpos_cam);
+    VL(color, wpos, wpos_cam);
+
+    color = indirect;
 
     tonemap(color, 1.0);
 

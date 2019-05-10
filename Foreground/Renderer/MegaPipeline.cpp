@@ -228,10 +228,10 @@ void CMegaPipeline::Render()
 
     lighting_indirect->beginRender(cmdList);
     lighting_indirect->setSampler("s", GlobalLinearSampler);
-    lighting_indirect->setImageView("t_albedo", GBuffer0);
     lighting_indirect->setImageView("t_depth", GBufferDepth);
+    lighting_indirect->setImageView("t_normals", GBuffer1);
     lighting_indirect->setImageView("t_shadow", ShadowDepth);
-    lighting_indirect->setImageView("taaBuffer", taaImageView);
+    lighting_indirect->setImageView("voxels", VoxelBuffer);
     lighting_indirect->setStruct("GlobalConstants", sizeof(CViewConstants),
                           &SceneView->GetViewConstants());
     lighting_indirect->setStruct("ExtendedMatrices", sizeof(ExtendedMatricesConstants),
@@ -469,8 +469,8 @@ void CMegaPipeline::CreateScreenPass()
         width, height);
 
     auto indirectImage = RenderDevice->CreateImage2D(
-        EFormat::R8G8B8A8_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
-        width, height);
+        EFormat::R16G16B16A16_SFLOAT, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
+        width / 2, height / 2);
 
     taaImageA = RenderDevice->CreateImage2D(
         EFormat::R8G8B8A8_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
@@ -513,8 +513,8 @@ void CMegaPipeline::CreateScreenPass()
     lighting_indirect = std::shared_ptr<CMaterial>(
         new CMaterial(RenderDevice, "Common/Quad.vert.spv", "Lighting/indirect.frag.spv"));
 
-    lighting_indirect->renderTargets = { { indirectImage } };
-    lighting_indirect->createPipeline(width, height);
+    lighting_indirect->renderTargets = { { indirectImage, EFormat::R16G16B16A16_SFLOAT } };
+    lighting_indirect->createPipeline(width / 2, height / 2);
 }
 
 } /* namespace Foreground */

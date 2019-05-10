@@ -12,10 +12,9 @@ layout(set = 1, binding = 0) uniform sampler s;
 layout(set = 1, binding = 1) uniform texture2D t_depth;
 layout(set = 1, binding = 2) uniform texture2D t_shadow;
 layout(set = 1, binding = 3) uniform texture2D t_normals;
-layout(set = 1, binding = 4) uniform texture2D taaBuffer;
-layout(rg32ui, set = 1, binding = 5) uniform readonly uimage3D voxels;
+layout(rg32ui, set = 1, binding = 4) uniform readonly uimage3D voxels;
 
-layout(set = 1, binding = 6) uniform ExtendedMatrices {
+layout(set = 1, binding = 5) uniform ExtendedMatrices {
     mat4 InvModelView;
     mat4 ShadowView;
     mat4 ShadowProj;
@@ -23,17 +22,17 @@ layout(set = 1, binding = 6) uniform ExtendedMatrices {
     mat4 VoxelProj;
 };
 
-layout(set = 1, binding = 7) uniform Sun {
+layout(set = 1, binding = 6) uniform Sun {
     vec3 luminance;
     vec3 position; // (or direction, for directional light)
 } sun;
 
-layout(set = 1, binding = 8) uniform prevProj {
+layout(set = 1, binding = 7) uniform prevProj {
     mat4 prevProjection;
     mat4 prevModelView;
 };
 
-layout(set = 1, binding = 9) uniform EngineCommonMiscs {
+layout(set = 1, binding = 8) uniform EngineCommonMiscs {
     vec2 resolution;
     uint frameCount;
     float frameTime;
@@ -74,19 +73,19 @@ struct HitState {
     bool hit;
 };
 
-vec3 getIndirect(vec3 wpos, vec3 wnorm, inout HitState hit) {
+vec3 getIndirect(vec3 wpos, vec3 wnorm, float randSeed, inout HitState hit) {
     vec3 Lo = vec3(0.0);
 
     const float step_size = 0.1;
 
-    vec2 rands = vec2(hash(inUV + float(frameCount % 8)), hash(vec2(-inUV.y, inUV.x) + float(frameCount % 8)));
+    vec2 rands = vec2(hash(inUV + float(frameCount % 8) + randSeed), hash(vec2(-inUV.y, inUV.x) + float(frameCount % 8) + randSeed));
     
     vec3 direction = hemisphereSample_cos(rands.x, rands.y);
     if (dot(direction, wnorm) < 0.0) direction = -direction;
 
     mat4 w2voxel = VoxelProj * VoxelView;
 
-    vec3 march_pos = wpos + direction * (1.0 + rands.y) * step_size / dot(direction, wnorm);
+    vec3 march_pos = wpos + direction * (2.0 + rands.y) * step_size / dot(direction, wnorm);
 
     vec3 startingVoxelPos = (w2voxel * vec4(wpos, 1.0)).xyz;
     startingVoxelPos.xy = startingVoxelPos.xy * 0.5 + 0.5;
@@ -141,7 +140,11 @@ void main() {
     HitState state;
     state.hit = false;
 
-    vec3 indirect = getIndirect(wpos, wnorm, state);
+    vec3 indirect = getIndirect(wpos, wnorm, 0.0, state);
+    indirect += getIndirect(wpos, wnorm, 3.0, state);
+    indirect *= 0.5;
+
+    indirect += vec3(0.01);
 
     outColor = vec4(indirect, 1.0);
 }
