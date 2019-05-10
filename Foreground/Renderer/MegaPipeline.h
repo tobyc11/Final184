@@ -13,6 +13,12 @@
 namespace Foreground
 {
 
+struct alignas(16) PreviousProjections
+{
+    tc::Matrix4 PrevProjection;
+    tc::Matrix4 PrevModelView;
+};
+
 class CMegaPipeline
 {
 public:
@@ -42,7 +48,16 @@ private:
     std::unique_ptr<CSceneView> ShadowSceneView;
     std::unique_ptr<CSceneView> VoxelizerSceneView;
 
+    PreviousProjections prevProj;
+
+    uint32_t frameCount = 0;
+
+    uint32_t width;
+    uint32_t height;
+
     RHI::CImage::Ref VoxelImage;
+    RHI::CImage::Ref taaImageA;
+    RHI::CImage::Ref taaImageB;
 
     RHI::CImageView::Ref GBuffer0;
     RHI::CImageView::Ref GBuffer1;
@@ -51,6 +66,7 @@ private:
     RHI::CImageView::Ref GBufferDepth;
     RHI::CImageView::Ref ShadowDepth;
     RHI::CImageView::Ref VoxelBuffer;
+    RHI::CImageView::Ref taaImageView;
     RHI::CRenderPass::Ref GBufferPass;
     RHI::CRenderPass::Ref VoxelizationPass;
     RHI::CRenderPass::Ref ZOnlyPass;

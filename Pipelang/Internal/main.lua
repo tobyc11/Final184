@@ -15,6 +15,11 @@ ParameterBlock "EngineCommon" : Set(0) {
         mat4 ProjMat;
         mat4 InvProj;
     ]] : Stages "VDHGP";
+    Output "uniform" "EngineCommonMiscs" [[
+        vec2 resolution;
+        uint frameCount;
+        float frameTime;
+    ]] : Stages "VDHGP";
 };
 
 ParameterBlock "PerPrimitive" : Set(2) {
@@ -30,13 +35,22 @@ function StaticMeshVS()
     Input "vec2" "TexCoord0";
     Input "uniform" "GlobalConstants";
     Input "uniform" "PerPrimitiveConstants";
+    Input "uniform" "EngineCommonMiscs";
     Output "vec3" "iPosition";
     Output "vec3" "iNormal";
     Output "vec4" "iTangent";
     Output "vec2" "iTexCoord0";
     Code [[
+        const vec2 taaOffsets[4] = vec2 [] (
+	        vec2(-0.326212, -0.40581),
+	        vec2(-0.203345,  0.620716),
+	        vec2(0.519456,   0.767022),
+	        vec2(0.89642,    0.412458)
+        );
+
         vec4 pos = ModelMat * vec4(Position, 1);
         gl_Position = ProjMat * ViewMat * pos;
+        gl_Position.st += taaOffsets[frameCount % 4] / resolution;
         iPosition = (pos / pos.w).xyz;
         iTexCoord0 = TexCoord0;
         iNormal = normalize(mat3(ViewMat) * mat3(ModelMat) * Normal);
@@ -48,6 +62,7 @@ function StaticMeshPassThruVS()
     Input "vec3" "Normal";
     Input "vec4" "Tangent";
     Input "vec2" "TexCoord0";
+    Input "uniform" "EngineCommonMiscs";
     Output "vec3" "vgNormal";
     Output "vec4" "vgTangent";
     Output "vec2" "vgTexCoord0";

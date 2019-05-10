@@ -61,6 +61,9 @@ void CMegaPipeline::SetSceneView(std::unique_ptr<CSceneView> sceneView,
     SceneView = std::move(sceneView);
     ShadowSceneView = std::move(shadowView);
     VoxelizerSceneView = std::move(voxelizerSceneView);
+
+    prevProj.PrevModelView = SceneView->GetViewConstants().ViewMat;
+    prevProj.PrevProjection = SceneView->GetViewConstants().ProjMat;
 }
 
 void CMegaPipeline::Resize()
@@ -128,6 +131,8 @@ struct alignas(16) ExtendedMatricesConstants
     tc::Matrix4 VoxelProjection;
 };
 
+
+
 void CMegaPipeline::Render()
 {
     // Or render some test image?
@@ -138,6 +143,8 @@ void CMegaPipeline::Render()
     {
         return;
     }
+
+    SwapChain->GetSize(width, height);
 
     // Does culling and stuff
     SceneView->GetCameraNode()->GetScene()->UpdateAccelStructure();
@@ -175,6 +182,9 @@ void CMegaPipeline::Render()
 
     auto copyCtx = cmdList->CreateCopyContext();
     copyCtx->ClearImage(*VoxelImage, { 0, 0, 0, 0 }, { 0, 1, 0, 1 });
+    copyCtx->CopyImage(
+        *taaImageA, *taaImageB,
+        { RHI::CImageCopy{ { 0, 0, 1 }, { 0, 0, 0 }, { 0, 0, 1 }, { 0, 0, 0 }, { width, height, 1 } } });
     copyCtx->FinishRecording();
 
     passCtx = cmdList->CreateParallelRenderContext(VoxelizationPass, {});
@@ -230,12 +240,17 @@ void CMegaPipeline::Render()
     gtao_color->setImageView("t_lighting", lighting_deferred->getRTViews()[0]);
     gtao_color->setImageView("t_shadow", ShadowDepth);
     gtao_color->setImageView("voxels", VoxelBuffer);
+    gtao_color->setImageView("taaBuffer", taaImageView);
     gtao_color->setStruct("GlobalConstants", sizeof(CViewConstants),
                           &SceneView->GetViewConstants());
     gtao_color->setStruct("ExtendedMatrices", sizeof(ExtendedMatricesConstants),
                           &matricesConstants);
+    gtao_color->setStruct("prevProj", sizeof(PreviousProjections), &prevProj);
     gtao_color->setStruct("Sun", sizeof(PerLightConstants), &directionalLightLists.lights[0]);
     gtao_color->blit2d();
+
+    prevProj.PrevModelView = SceneView->GetViewConstants().ViewMat;
+    prevProj.PrevProjection = SceneView->GetViewConstants().ProjMat;
 
     // Render ImGui at the latest possible time so that we can still use ImGui inside renderer
     ImGui::Render();
@@ -244,6 +259,7 @@ void CMegaPipeline::Render()
         RHI::CRHIImGuiBackend::RenderDrawData(drawData, *gtao_color->getContext());
 
     gtao_color->endRender();
+
     cmdList->Commit();
 
     SceneView->FrameFinished();
@@ -252,7 +268,16 @@ void CMegaPipeline::Render()
 
     RHI::CSwapChainPresentInfo info;
     SwapChain->Present(info);
+
+    frameCount++;
 }
+
+struct EngineCommonMiscs
+{
+    tc::Vector2 resolution;
+    uint32_t frameCount;
+    float frameTime;
+};
 
 void CMegaPipeline::BindEngineCommonForView(RHI::IRenderContext& context, uint32_t viewIndex)
 {
@@ -274,6 +299,13 @@ void CMegaPipeline::BindEngineCommonForView(RHI::IRenderContext& context, uint32
     else if (viewIndex == 2)
         pb.BindConstants(EngineCommonDS, &VoxelizerSceneView->GetViewConstants(),
                          sizeof(CViewConstants), "GlobalConstants");
+
+    EngineCommonMiscs miscs;
+    miscs.frameCount = frameCount;
+    miscs.resolution = tc::Vector2(width, height);
+
+    pb.BindConstants(EngineCommonDS, &miscs,
+                     sizeof(EngineCommonMiscs), "EngineCommonMiscs");
 
     context.BindRenderDescriptorSet(0, *EngineCommonDS);
 
@@ -413,6 +445,20 @@ void CMegaPipeline::CreateScreenPass()
         EFormat::R16G16B16A16_SFLOAT, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
         width, height);
 
+    taaImageA = RenderDevice->CreateImage2D(
+        EFormat::R8G8B8A8_SNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
+        width, height);
+
+    taaImageB = RenderDevice->CreateImage2D(
+        EFormat::R8G8B8A8_SNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled, width,
+        height);
+
+    CImageViewDesc taaImageViewDesc;
+    taaImageViewDesc.Format = EFormat::R8G8B8A8_UNORM;
+    taaImageViewDesc.Type = EImageViewType::View2D;
+    taaImageViewDesc.Range.Set(0, 1, 0, 1);
+    taaImageView = RenderDevice->CreateImageView(taaImageViewDesc, taaImageB);
+
     gtao_visibility = std::shared_ptr<CMaterial>(
         new CMaterial(RenderDevice, "Common/Quad.vert.spv", "GTAO/gtao.frag.spv"));
 
@@ -428,7 +474,7 @@ void CMegaPipeline::CreateScreenPass()
     gtao_color = std::shared_ptr<CMaterial>(
         new CMaterial(RenderDevice, "Common/Quad.vert.spv", "GTAO/color.frag.spv"));
 
-    gtao_color->renderTargets = { { fbImage } };
+    gtao_color->renderTargets = { { fbImage }, { taaImageA } };
     gtao_color->createPipeline(width, height);
 
     lighting_deferred = std::shared_ptr<CMaterial>(

@@ -5,6 +5,7 @@
 layout(location = 0) in vec2 inUV;
 
 layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 outTAA;
 
 #include "EngineCommon.h"
 
@@ -14,9 +15,10 @@ layout(set = 1, binding = 2) uniform texture2D t_ao;
 layout(set = 1, binding = 3) uniform texture2D t_depth;
 layout(set = 1, binding = 4) uniform texture2D t_lighting;
 layout(set = 1, binding = 5) uniform texture2D t_shadow;
-layout(rgba8, set = 1, binding = 6) uniform readonly image3D voxels;
+layout(set = 1, binding = 6) uniform texture2D taaBuffer;
+layout(rgba8, set = 1, binding = 7) uniform readonly image3D voxels;
 
-layout(set = 1, binding = 7) uniform ExtendedMatrices {
+layout(set = 1, binding = 8) uniform ExtendedMatrices {
     mat4 InvModelView;
     mat4 ShadowView;
     mat4 ShadowProj;
@@ -24,11 +26,15 @@ layout(set = 1, binding = 7) uniform ExtendedMatrices {
     mat4 VoxelProj;
 };
 
-layout(set = 1, binding = 8) uniform Sun {
+layout(set = 1, binding = 9) uniform Sun {
     vec3 luminance;
     vec3 position; // (or direction, for directional light)
 } sun;
 
+layout(set = 1, binding = 10) uniform prevProj {
+    mat4 prevProjection;
+    mat4 prevModelView;
+};
 
 void tonemap(inout vec3 color, float adapted_lum) {
 	color *= adapted_lum;
@@ -215,6 +221,26 @@ void main() {
     // Volumetric lighting
     VL(color, wpos, wpos_cam);
 
+    tonemap(color, 1.0);
+
+    // And then TAA
+    vec4 prevCspos = prevModelView * vec4(wpos, 1.0);
+    vec4 prevProjPos = prevProjection * prevCspos;
+    prevProjPos /= prevProjPos.w;
+
+    prevProjPos.st = prevProjPos.st * 0.5 + 0.5;
+
+    vec2 reprojUV = prevProjPos.st;
+
+    if (clamp(reprojUV, vec2(0.0), vec2(1.0)) == reprojUV) {
+        float blendWeight = 0.5;
+        vec3 prevColor = texture(sampler2D(taaBuffer, s), reprojUV).rgb;
+        color = mix(color, prevColor, blendWeight);
+    }
+
+    outTAA = vec4(color, 1.0);
+
+    // Debug voxelization view
     if (inUV.x < 0.3333333 && inUV.y < 0.333333) {
         color = vec3(0.0);
 
@@ -247,8 +273,6 @@ void main() {
             }
         }
     }
-
-    tonemap(color, 1.0);
 
     outColor = vec4(color, 1.0);
 }
