@@ -199,7 +199,7 @@ void VL(inout vec3 color, vec3 wpos, vec3 wpos_cam) {
         contribute_factor += shade * miePhase(sample_pos - spos_cam);
     }
 
-    contribute_factor *= 0.4 / float(samplesVL);
+    contribute_factor *= 0.2 / float(samplesVL);
 
     color = color * (1.0 - contribute_factor * 0.5) + sun.luminance * contribute_factor;
 }
@@ -229,8 +229,6 @@ void main() {
 
     // Volumetric lighting
     VL(color, wpos, wpos_cam);
-
-    color = indirect;
 
     tonemap(color, 1.0);
 
