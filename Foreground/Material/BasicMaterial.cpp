@@ -15,8 +15,8 @@ void CBasicMaterial::Bind(RHI::IRenderContext& context)
 
         MaterialConstants materialConst;
         materialConst.BaseColor = GetAlbedo();
-        materialConst.MetallicRoughness.y = GetMetallic();
-        materialConst.MetallicRoughness.z = GetRoughness();
+        materialConst.MetallicRoughness.z = GetMetallic();
+        materialConst.MetallicRoughness.y = GetRoughness();
         materialConst.UseTextures = GetAlbedoImage() || GetMetallicRoughnessImage() ? 1 : 0;
 
         MaterialConstantsBuffer = RenderDevice->CreateBuffer(

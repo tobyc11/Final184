@@ -89,8 +89,8 @@ function BasicMaterial()
         if (!UseTextures)
         {
             BaseColor = BaseColorFactor;
-            Metallic = MetallicRoughness.g;
-            Roughness = MetallicRoughness.b;
+            Metallic = MetallicRoughness.b;
+            Roughness = MetallicRoughness.g;
         }
         else
         {
@@ -99,8 +99,8 @@ function BasicMaterial()
             if (BaseColor.a < 0.05) discard;
 
             vec4 mr = texture(sampler2D(MetallicRoughnessTex, GlobalLinearSampler), iTexCoord0);
-            Metallic = mr.g * MetallicRoughness.g;
-            Roughness = mr.b * MetallicRoughness.b;
+            Metallic = mr.b * MetallicRoughness.b;
+            Roughness = mr.g * MetallicRoughness.g;
         }
     ]]
 end
@@ -126,12 +126,16 @@ ParameterBlock "VoxelData" : Set(3) {
 
 function GBufferPS()
     Input "vec4" "BaseColor";
+    Input "float" "Metallic";
+    Input "float" "Roughness";
     Input "vec3" "iNormal";
     Output "vec4" "Target0";
     Output "vec4" "Target1";
+    Output "vec4" "Target2";
     Code [[
         Target0 = vec4(BaseColor.rgb, 1.0);
         Target1 = vec4(fma(iNormal, vec3(0.5), vec3(0.5)), 0.0);
+        Target2 = vec4(0.0, Roughness, Metallic, 0.0);
     ]]
 end
 

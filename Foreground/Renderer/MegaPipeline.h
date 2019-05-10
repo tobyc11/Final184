@@ -1,9 +1,9 @@
 #pragma once
 #include "ForegroundCommon.h"
 #include "GBufferRenderer.h"
-#include "ZOnlyRenderer.h"
-#include "VoxelizeRenderer.h"
 #include "SceneGraph/SceneView.h"
+#include "VoxelizeRenderer.h"
+#include "ZOnlyRenderer.h"
 #include <Pipeline.h>
 #include <Resources.h>
 #include <Sampler.h>
@@ -26,7 +26,8 @@ class CMegaPipeline
 public:
     explicit CMegaPipeline(RHI::CSwapChain::Ref swapChain);
 
-    void SetSceneView(std::unique_ptr<CSceneView> sceneView, std::unique_ptr<CSceneView> shadowView);
+    void SetSceneView(std::unique_ptr<CSceneView> sceneView,
+                      std::unique_ptr<CSceneView> shadowView);
 
     void Resize();
     void Render();
@@ -56,7 +57,7 @@ private:
 
     RHI::CImageView::Ref GBuffer0;
     RHI::CImageView::Ref GBuffer1;
-    // RHI::CImageView::Ref GBuffer2;
+    RHI::CImageView::Ref GBuffer2;
     // RHI::CImageView::Ref GBuffer3;
     RHI::CImageView::Ref GBufferDepth;
     RHI::CImageView::Ref ShadowDepth;

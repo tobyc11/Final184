@@ -152,10 +152,10 @@ void CMegaPipeline::Render()
     directionalLightLists.numLights = 0;
     getAllLights(&pointLightLists, &directionalLightLists, root);
 
-    auto passCtx = cmdList->CreateParallelRenderContext(GBufferPass,
-                                                        { RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f),
-                                                          RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f),
-                                                          RHI::CClearValue(1.0f, 0) });
+    auto passCtx = cmdList->CreateParallelRenderContext(
+        GBufferPass,
+        { RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f), RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f),
+          RHI::CClearValue(0.0f, 0.0f, 0.0f, 0.0f), RHI::CClearValue(1.0f, 0) });
     auto ctx = passCtx->CreateRenderContext(0);
     GBufferRenderer.RenderList(*ctx, SceneView->GetVisiblePrimModelMatrix(),
                                SceneView->GetVisiblePrimitiveList());
@@ -233,7 +233,7 @@ void CMegaPipeline::Render()
     gtao_color->setImageView("voxels", VoxelBuffer);
     gtao_color->setStruct("GlobalConstants", sizeof(GlobalConstants), &constants);
     gtao_color->setStruct("ExtendedMatrices", sizeof(ExtendedMatricesConstants),
-                                 &matricesConstants);
+                          &matricesConstants);
     gtao_color->setStruct("Sun", sizeof(PerLightConstants), &directionalLightLists.lights[0]);
     gtao_color->blit2d();
 
@@ -356,6 +356,9 @@ void CMegaPipeline::CreateGBufferPass(uint32_t width, uint32_t height)
     auto normalsImage = RenderDevice->CreateImage2D(
         EFormat::R16G16B16A16_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
         width, height);
+    auto matPropImage = RenderDevice->CreateImage2D(
+        EFormat::R8G8B8A8_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled, width,
+        height);
     auto depthImage = RenderDevice->CreateImage2D(
         EFormat::D32_SFLOAT_S8_UINT, EImageUsageFlags::DepthStencil | EImageUsageFlags::Sampled,
         width, height);
@@ -372,6 +375,12 @@ void CMegaPipeline::CreateGBufferPass(uint32_t width, uint32_t height)
     normalsViewDesc.Range.Set(0, 1, 0, 1);
     GBuffer1 = RenderDevice->CreateImageView(normalsViewDesc, normalsImage);
 
+    CImageViewDesc matPropViewDesc;
+    matPropViewDesc.Format = EFormat::R8G8B8A8_UNORM;
+    matPropViewDesc.Type = EImageViewType::View2D;
+    matPropViewDesc.Range.Set(0, 1, 0, 1);
+    GBuffer2 = RenderDevice->CreateImageView(matPropViewDesc, matPropImage);
+
     CImageViewDesc depthViewDesc;
     depthViewDesc.Format = EFormat::D32_SFLOAT_S8_UINT;
     depthViewDesc.Type = EImageViewType::View2D;
@@ -382,8 +391,13 @@ void CMegaPipeline::CreateGBufferPass(uint32_t width, uint32_t height)
     CRenderPassDesc rpDesc;
     rpDesc.AddAttachment(GBuffer0, EAttachmentLoadOp::Clear, EAttachmentStoreOp::Store);
     rpDesc.AddAttachment(GBuffer1, EAttachmentLoadOp::Clear, EAttachmentStoreOp::Store);
+    rpDesc.AddAttachment(GBuffer2, EAttachmentLoadOp::Clear, EAttachmentStoreOp::Store);
     rpDesc.AddAttachment(GBufferDepth, EAttachmentLoadOp::Clear, EAttachmentStoreOp::Store);
-    rpDesc.NextSubpass().AddColorAttachment(0).AddColorAttachment(1).SetDepthStencilAttachment(2);
+    rpDesc.NextSubpass()
+        .AddColorAttachment(0)
+        .AddColorAttachment(1)
+        .AddColorAttachment(2)
+        .SetDepthStencilAttachment(3);
     rpDesc.Width = width;
     rpDesc.Height = height;
     rpDesc.Layers = 1;
@@ -394,8 +408,8 @@ void CMegaPipeline::CreateVoxelizePass()
 {
     using namespace RHI;
 
-    VoxelImage = RenderDevice->CreateImage3D(EFormat::R8G8B8A8_UNORM,
-                                                  EImageUsageFlags::Storage, 512, 512, 512);
+    VoxelImage = RenderDevice->CreateImage3D(EFormat::R8G8B8A8_UNORM, EImageUsageFlags::Storage,
+                                             512, 512, 512);
 
     CImageViewDesc voxelViewDesc;
     voxelViewDesc.Format = EFormat::R8G8B8A8_UNORM;
