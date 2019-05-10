@@ -13,14 +13,6 @@
 namespace Foreground
 {
 
-struct GlobalConstants
-{
-    tc::Vector4 CameraPos;
-    tc::Matrix4 ViewMat;
-    tc::Matrix4 ProjMat;
-    tc::Matrix4 InvProj;
-};
-
 class CMegaPipeline
 {
 public:
@@ -32,14 +24,9 @@ public:
     void Resize();
     void Render();
 
-    // Called by the renderers to set global constants
-    void UpdateEngineCommon();
-    void BindEngineCommon(RHI::IRenderContext& context);
-
-    void UpdateEngineCommonShadow();
-    void BindEngineCommonShadow(RHI::IRenderContext& context);
-
     RHI::CImageView::Ref getVoxelsImageView() const { return VoxelBuffer; };
+
+    void BindEngineCommonForView(RHI::IRenderContext& context, uint32_t viewIndex);
 
 protected:
     void CreateRenderPasses();
@@ -82,7 +69,6 @@ private:
     std::shared_ptr<CMaterial> lighting_deferred;
 
     RHI::CDescriptorSet::Ref EngineCommonDS;
-    RHI::CDescriptorSet::Ref EngineCommonShadowDS;
 };
 
 } /* namespace Foreground */

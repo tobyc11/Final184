@@ -46,6 +46,8 @@ private:
     std::map<std::weak_ptr<CPrimitive>, CPrimitiveResources,
              std::owner_less<std::weak_ptr<CPrimitive>>>
         CachedPrimitiveResources;
+
+	bool bSet0AlreadyBound = false;
 };
 
 }

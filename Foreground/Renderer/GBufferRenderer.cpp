@@ -94,8 +94,10 @@ void CGBufferRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4&
         {
             context.BindRenderPipeline(*iter->second.Pipeline);
             if (!BoundSet0)
-                Parent->BindEngineCommon(context);
-            BoundSet0 = true;
+            {
+                Parent->BindEngineCommonForView(context, 0);
+                BoundSet0 = true;
+            }
 
             basicMat->Bind(context);
 

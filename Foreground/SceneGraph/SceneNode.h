@@ -33,6 +33,10 @@ public:
     void RemoveChildNode(CSceneNode* node);
     std::vector<CSceneNode*> GetChildren() const;
 
+    // A flag denoting whether this node should be "abstracted away" from the user
+    bool IsInternal() const { return bIsInternal; }
+    void SetInternal(bool value) { bIsInternal = value; }
+
     void SetPosition(const tc::Vector3& position);
     void SetRotation(const tc::Quaternion& rotation);
     void SetDirection(const tc::Vector3& direction);
@@ -86,7 +90,7 @@ public:
     const tc::BoundingBox& GetBoundingBox() const;
     tc::BoundingBox GetWorldBoundingBox() const;
 
-	void UpdateAccelStructure() const;
+    void UpdateAccelStructure() const;
 
     void RetainDontKill() const { DontKillCounter++; }
     void ReleaseDontKill() const { DontKillCounter--; }
@@ -99,6 +103,7 @@ private:
     CScene* Scene = nullptr;
     CSceneNode* Parent = nullptr;
     std::vector<std::unique_ptr<CSceneNode>> Children;
+    bool bIsInternal = false;
 
     tc::Vector3 Translation;
     tc::Quaternion Rotation;
@@ -114,7 +119,7 @@ private:
     mutable bool bBoundingBoxDirty = true;
     mutable tc::BoundingBox BoundingBox;
 
-	mutable bool bAccelStructureDirty = true;
+    mutable bool bAccelStructureDirty = true;
 
     // A node may be referenced by scene views etc. If that's the case, don't delete this node.
     mutable std::atomic_uint32_t DontKillCounter = 0;

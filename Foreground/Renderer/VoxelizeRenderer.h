@@ -17,7 +17,7 @@ public:
     explicit CVoxelizeRenderer(CMegaPipeline* p);
 
     void SetRenderPass(RHI::CRenderPass::Ref renderPass, uint32_t subpass = 0);
-
+	
     void RenderList(RHI::IRenderContext& context, const std::vector<tc::Matrix3x4>& modelMats,
                     const std::vector<CPrimitive*>& primitives);
 

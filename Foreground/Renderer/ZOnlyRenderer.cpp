@@ -24,6 +24,7 @@ void CZOnlyRenderer::RenderList(RHI::IRenderContext& context,
     if (modelMats.empty())
         return;
 
+    bSet0AlreadyBound = false;
     for (size_t i = 0; i < modelMats.size(); i++)
         Render(context, modelMats[i], primitives[i]);
 }
@@ -92,7 +93,10 @@ void CZOnlyRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4& m
         if (auto basicMat = std::dynamic_pointer_cast<CBasicMaterial>(primitive->GetMaterial()))
         {
             context.BindRenderPipeline(*iter->second.Pipeline);
-            Parent->BindEngineCommonShadow(context);
+
+            if (!bSet0AlreadyBound)
+                Parent->BindEngineCommonForView(context, 1);
+            bSet0AlreadyBound = true;
 
             basicMat->Bind(context);
 

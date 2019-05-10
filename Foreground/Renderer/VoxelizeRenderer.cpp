@@ -50,6 +50,7 @@ void CVoxelizeRenderer::PreparePrimitiveResources(std::shared_ptr<CPrimitive> pr
 
             desc.PrimitiveTopology = triMesh->GetPrimitiveTopology();
             desc.RasterizerState.CullMode = RHI::ECullModeFlags::None;
+            desc.DepthStencilState.DepthEnable = false;
             desc.RenderPass = RenderPass;
             desc.Subpass = 0;
             triMesh->PipelineSetVertexInputDesc(
@@ -102,7 +103,7 @@ void CVoxelizeRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4
         {
             context.BindRenderPipeline(*iter->second.Pipeline);
             if (!BoundSet0)
-                Parent->BindEngineCommonShadow(context);
+                Parent->BindEngineCommonForView(context, 1);
             BoundSet0 = true;
 
             basicMat->Bind(context);

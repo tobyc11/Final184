@@ -5,6 +5,14 @@
 namespace Foreground
 {
 
+struct CViewConstants
+{
+    tc::Vector4 CameraPos;
+    tc::Matrix4 ViewMat;
+    tc::Matrix4 ProjMat;
+    tc::Matrix4 InvProj;
+};
+
 class CSceneView : public tc::FNonCopyable
 {
 public:
@@ -24,6 +32,8 @@ public:
     }
     const std::vector<CPrimitive*>& GetVisiblePrimitiveList() const { return VisiblePrimitiveList; }
 
+    const CViewConstants& GetViewConstants() const { return ViewConstants; }
+
 private:
     // A Scene node that holds a camera
     CSceneNode* CameraNode = nullptr;
@@ -32,6 +42,8 @@ private:
     std::vector<CSceneNode*> VisibleNodeList;
     std::vector<tc::Matrix3x4> VisiblePrimModelMatrix;
     std::vector<CPrimitive*> VisiblePrimitiveList;
+
+    CViewConstants ViewConstants;
 };
 
 }

@@ -23,6 +23,12 @@ void CSceneView::PrepareToRender()
     auto* sceneAccel = scene->GetAccelStructure();
     auto camera = CameraNode->GetCamera();
 
+    // Lock in the constants
+    ViewConstants.CameraPos = tc::Vector4(CameraNode->GetWorldPosition(), 1.0f);
+    ViewConstants.ViewMat = CameraNode->GetWorldTransform().Inverse().ToMatrix4().Transpose();
+    ViewConstants.ProjMat = camera->GetMatrix().Transpose();
+    ViewConstants.InvProj = camera->GetMatrix().Inverse().Transpose();
+
     if (0)
     {
         // Frustum culling enabled

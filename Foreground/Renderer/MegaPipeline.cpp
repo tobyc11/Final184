@@ -138,10 +138,8 @@ void CMegaPipeline::Render()
     // Does culling and stuff
     SceneView->GetCameraNode()->GetScene()->UpdateAccelStructure();
     SceneView->PrepareToRender();
-    UpdateEngineCommon();
 
     ShadowSceneView->PrepareToRender();
-    UpdateEngineCommonShadow();
 
     auto cmdList = RenderQueue->CreateCommandList();
     cmdList->Enqueue();
@@ -180,19 +178,13 @@ void CMegaPipeline::Render()
     ctx->FinishRecording();
     passCtx->FinishRecording();
 
-    GlobalConstants constants;
-    constants.CameraPos = tc::Vector4(SceneView->GetCameraNode()->GetWorldPosition(), 1.0f);
-    constants.ViewMat =
-        SceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4().Transpose();
-    constants.ProjMat = SceneView->GetCameraNode()->GetCamera()->GetMatrix().Transpose();
-    constants.InvProj = SceneView->GetCameraNode()->GetCamera()->GetMatrix().Inverse().Transpose();
-
     gtao_visibility->beginRender(cmdList);
     gtao_visibility->setSampler("s", GlobalLinearSampler);
     gtao_visibility->setImageView("t_albedo", GBuffer0);
     gtao_visibility->setImageView("t_normals", GBuffer1);
     gtao_visibility->setImageView("t_depth", GBufferDepth);
-    gtao_visibility->setStruct("GlobalConstants", sizeof(GlobalConstants), &constants);
+    gtao_visibility->setStruct("GlobalConstants", sizeof(CViewConstants),
+                               &SceneView->GetViewConstants());
     gtao_visibility->blit2d();
     gtao_visibility->endRender();
 
@@ -203,11 +195,9 @@ void CMegaPipeline::Render()
     gtao_blur->endRender();
 
     ExtendedMatricesConstants matricesConstants;
-    matricesConstants.InvModelView = constants.ViewMat.Inverse();
-    matricesConstants.ShadowProjection =
-        ShadowSceneView->GetCameraNode()->GetCamera()->GetMatrix().Transpose();
-    matricesConstants.ShadowView =
-        ShadowSceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4().Transpose();
+    matricesConstants.InvModelView = SceneView->GetViewConstants().ViewMat.Inverse();
+    matricesConstants.ShadowProjection = ShadowSceneView->GetViewConstants().ProjMat;
+    matricesConstants.ShadowView = ShadowSceneView->GetViewConstants().ViewMat;
 
     lighting_deferred->beginRender(cmdList);
     lighting_deferred->setSampler("s", GlobalLinearSampler);
@@ -215,7 +205,8 @@ void CMegaPipeline::Render()
     lighting_deferred->setImageView("t_normals", GBuffer1);
     lighting_deferred->setImageView("t_depth", GBufferDepth);
     lighting_deferred->setImageView("t_shadow", ShadowDepth);
-    lighting_deferred->setStruct("GlobalConstants", sizeof(GlobalConstants), &constants);
+    lighting_deferred->setStruct("GlobalConstants", sizeof(CViewConstants),
+                                 &SceneView->GetViewConstants());
     lighting_deferred->setStruct("pointLights", sizeof(LightLists), &pointLightLists);
     lighting_deferred->setStruct("directionalLights", sizeof(LightLists), &directionalLightLists);
     lighting_deferred->setStruct("ExtendedMatrices", sizeof(ExtendedMatricesConstants),
@@ -231,7 +222,8 @@ void CMegaPipeline::Render()
     gtao_color->setImageView("t_lighting", lighting_deferred->getRTViews()[0]);
     gtao_color->setImageView("t_shadow", ShadowDepth);
     gtao_color->setImageView("voxels", VoxelBuffer);
-    gtao_color->setStruct("GlobalConstants", sizeof(GlobalConstants), &constants);
+    gtao_color->setStruct("GlobalConstants", sizeof(CViewConstants),
+                          &SceneView->GetViewConstants());
     gtao_color->setStruct("ExtendedMatrices", sizeof(ExtendedMatricesConstants),
                           &matricesConstants);
     gtao_color->setStruct("Sun", sizeof(PerLightConstants), &directionalLightLists.lights[0]);
@@ -253,63 +245,28 @@ void CMegaPipeline::Render()
     SwapChain->Present(info);
 }
 
-void CMegaPipeline::UpdateEngineCommon()
+void CMegaPipeline::BindEngineCommonForView(RHI::IRenderContext& context, uint32_t viewIndex)
 {
-    if (!EngineCommonDS)
-    {
-        auto& lib = PipelangContext.GetLibrary("Internal");
-        auto& pb = lib.GetParameterBlock("EngineCommon");
-        EngineCommonDS = pb.CreateDescriptorSet();
-    }
-
     auto& lib = PipelangContext.GetLibrary("Internal");
     auto& pb = lib.GetParameterBlock("EngineCommon");
+    if (!EngineCommonDS)
+        EngineCommonDS = pb.CreateDescriptorSet();
+
     pb.BindSampler(EngineCommonDS, GlobalNiceSampler, "GlobalNiceSampler");
     pb.BindSampler(EngineCommonDS, GlobalLinearSampler, "GlobalLinearSampler");
     pb.BindSampler(EngineCommonDS, GlobalNearestSampler, "GlobalNearestSampler");
 
-    GlobalConstants constants;
-    constants.CameraPos = tc::Vector4(SceneView->GetCameraNode()->GetWorldPosition(), 1.0f);
-    constants.ViewMat =
-        SceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4().Transpose();
-    constants.ProjMat = SceneView->GetCameraNode()->GetCamera()->GetMatrix().Transpose();
-    constants.InvProj = SceneView->GetCameraNode()->GetCamera()->GetMatrix().Inverse().Transpose();
-    pb.BindConstants(EngineCommonDS, &constants, sizeof(GlobalConstants), "GlobalConstants");
-}
+    if (viewIndex == 0)
+        pb.BindConstants(EngineCommonDS, &SceneView->GetViewConstants(), sizeof(CViewConstants),
+                         "GlobalConstants");
+    else if (viewIndex == 1)
+        pb.BindConstants(EngineCommonDS, &ShadowSceneView->GetViewConstants(),
+                         sizeof(CViewConstants), "GlobalConstants");
 
-void CMegaPipeline::BindEngineCommon(RHI::IRenderContext& context)
-{
     context.BindRenderDescriptorSet(0, *EngineCommonDS);
-}
 
-void CMegaPipeline::UpdateEngineCommonShadow()
-{
-    if (!EngineCommonShadowDS)
-    {
-        auto& lib = PipelangContext.GetLibrary("Internal");
-        auto& pb = lib.GetParameterBlock("EngineCommon");
-        EngineCommonShadowDS = pb.CreateDescriptorSet();
-    }
-
-    auto& lib = PipelangContext.GetLibrary("Internal");
-    auto& pb = lib.GetParameterBlock("EngineCommon");
-    pb.BindSampler(EngineCommonShadowDS, GlobalNiceSampler, "GlobalNiceSampler");
-    pb.BindSampler(EngineCommonShadowDS, GlobalLinearSampler, "GlobalLinearSampler");
-    pb.BindSampler(EngineCommonShadowDS, GlobalNearestSampler, "GlobalNearestSampler");
-
-    GlobalConstants constants;
-    constants.CameraPos = tc::Vector4(ShadowSceneView->GetCameraNode()->GetWorldPosition(), 1.0f);
-    constants.ViewMat =
-        ShadowSceneView->GetCameraNode()->GetWorldTransform().Inverse().ToMatrix4().Transpose();
-    constants.ProjMat = ShadowSceneView->GetCameraNode()->GetCamera()->GetMatrix().Transpose();
-    constants.InvProj =
-        ShadowSceneView->GetCameraNode()->GetCamera()->GetMatrix().Inverse().Transpose();
-    pb.BindConstants(EngineCommonShadowDS, &constants, sizeof(GlobalConstants), "GlobalConstants");
-}
-
-void CMegaPipeline::BindEngineCommonShadow(RHI::IRenderContext& context)
-{
-    context.BindRenderDescriptorSet(0, *EngineCommonShadowDS);
+    // TODO: careful! EngineCommonDS will still be in use after leaving this function, what if
+    // multiple thread calls this?
 }
 
 void CMegaPipeline::CreateRenderPasses()
