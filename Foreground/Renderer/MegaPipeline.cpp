@@ -222,6 +222,27 @@ void CMegaPipeline::Render()
     matricesConstants.VoxelProjection = VoxelizerSceneView->GetViewConstants().ProjMat;
     matricesConstants.VoxelView = VoxelizerSceneView->GetViewConstants().ViewMat;
 
+    EngineCommonMiscs miscs;
+    miscs.frameCount = frameCount;
+    miscs.resolution = tc::Vector2(width, height);
+
+    lighting_indirect->beginRender(cmdList);
+    lighting_indirect->setSampler("s", GlobalLinearSampler);
+    lighting_indirect->setImageView("t_albedo", GBuffer0);
+    lighting_indirect->setImageView("t_depth", GBufferDepth);
+    lighting_indirect->setImageView("t_shadow", ShadowDepth);
+    lighting_indirect->setImageView("taaBuffer", taaImageView);
+    lighting_indirect->setStruct("GlobalConstants", sizeof(CViewConstants),
+                          &SceneView->GetViewConstants());
+    lighting_indirect->setStruct("ExtendedMatrices", sizeof(ExtendedMatricesConstants),
+                          &matricesConstants);
+    lighting_indirect->setStruct("prevProj", sizeof(PreviousProjections), &prevProj);
+    lighting_indirect->setStruct("Sun", sizeof(PerLightConstants),
+                                 &directionalLightLists.lights[0]);
+    lighting_indirect->setStruct("EngineCommonMiscs", sizeof(EngineCommonMiscs), &miscs);
+    lighting_indirect->blit2d();
+    lighting_indirect->endRender();
+
     lighting_deferred->beginRender(cmdList);
     lighting_deferred->setSampler("s", GlobalLinearSampler);
     lighting_deferred->setImageView("t_albedo", GBuffer0);
@@ -237,10 +258,6 @@ void CMegaPipeline::Render()
     lighting_deferred->blit2d();
     lighting_deferred->endRender();
 
-    EngineCommonMiscs miscs;
-    miscs.frameCount = frameCount;
-    miscs.resolution = tc::Vector2(width, height);
-
     gtao_color->beginRender(cmdList);
     gtao_color->setSampler("s", GlobalLinearSampler);
     gtao_color->setImageView("t_albedo", GBuffer0);
@@ -248,8 +265,7 @@ void CMegaPipeline::Render()
     gtao_color->setImageView("t_depth", GBufferDepth);
     gtao_color->setImageView("t_lighting", lighting_deferred->getRTViews()[0]);
     gtao_color->setImageView("t_shadow", ShadowDepth);
-    gtao_color->setImageView("t_normals", GBuffer1);
-    gtao_color->setImageView("voxels", VoxelBuffer);
+    gtao_color->setImageView("t_indirect", lighting_indirect->getRTViews()[0]);
     gtao_color->setImageView("taaBuffer", taaImageView);
     gtao_color->setStruct("GlobalConstants", sizeof(CViewConstants),
                           &SceneView->GetViewConstants());
@@ -451,12 +467,16 @@ void CMegaPipeline::CreateScreenPass()
         EFormat::R16G16B16A16_SFLOAT, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
         width, height);
 
+    auto indirectImage = RenderDevice->CreateImage2D(
+        EFormat::R8G8B8A8_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
+        width, height);
+
     taaImageA = RenderDevice->CreateImage2D(
-        EFormat::R8G8B8A8_SNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
+        EFormat::R8G8B8A8_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled,
         width, height);
 
     taaImageB = RenderDevice->CreateImage2D(
-        EFormat::R8G8B8A8_SNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled, width,
+        EFormat::R8G8B8A8_UNORM, EImageUsageFlags::RenderTarget | EImageUsageFlags::Sampled, width,
         height);
 
     CImageViewDesc taaImageViewDesc;
@@ -488,6 +508,12 @@ void CMegaPipeline::CreateScreenPass()
 
     lighting_deferred->renderTargets = { { lightingImage, EFormat::R16G16B16A16_SFLOAT } };
     lighting_deferred->createPipeline(width, height);
+
+    lighting_indirect = std::shared_ptr<CMaterial>(
+        new CMaterial(RenderDevice, "Common/Quad.vert.spv", "Lighting/indirect.frag.spv"));
+
+    lighting_indirect->renderTargets = { { indirectImage } };
+    lighting_indirect->createPipeline(width, height);
 }
 
 } /* namespace Foreground */

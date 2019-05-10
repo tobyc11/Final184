@@ -85,6 +85,7 @@ private:
     std::shared_ptr<CMaterial> gtao_color;
 
     std::shared_ptr<CMaterial> lighting_deferred;
+    std::shared_ptr<CMaterial> lighting_indirect;
 
     RHI::CDescriptorSet::Ref EngineCommonDS;
 };
