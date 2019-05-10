@@ -134,7 +134,7 @@ function VoxelGS()
 			}
 			vec4 worldPos = ModelMat * gl_in[i].gl_Position;
 			iPosition = (worldPos / worldPos.w).xyz;
-			iNormal = normalize(mat3(ViewMat) * mat3(ModelMat) * vgNormal[i]);
+			iNormal = normalize(mat3(ModelMat) * vgNormal[i]);
 			iTangent = vec4(0);
 			iTexCoord0 = vgTexCoord0[i];
 			EmitVertex();
@@ -221,7 +221,7 @@ function BasicZOnlyMaterial()
 end
 
 ParameterBlock "VoxelData" : Set(3) {
-    Output "image3D" "voxels" : Stages "P" : Format "rgba8";
+    Output "uimage3D" "voxels" : Stages "P" : Format "rg32ui";
 };
 
 function GBufferPS()
@@ -244,7 +244,7 @@ function VoxelPS()
     Input "vec3" "iNormal";
     Input "vec3" "iPosition";
 	Input "uint" "iOrientation";
-    Input "image3D" "voxels";
+    Input "uimage3D" "voxels";
     Code [[
         vec3 voxelizedPosition;
 		uint maxDepth = imageSize(voxels).z - 1;
@@ -265,7 +265,8 @@ function VoxelPS()
 			voxelizedPosition.y = gl_FragCoord.z * maxDepth;
 			voxelizedPosition.z = maxDepth - gl_FragCoord.y;
 		}
-		imageStore(voxels, ivec3(voxelizedPosition), BaseColor);
+
+		imageStore(voxels, ivec3(voxelizedPosition), uvec4(packUnorm4x8(BaseColor), packSnorm4x8(vec4(iNormal, 0.0)), 0, 0));
     ]]
 end
 

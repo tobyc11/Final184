@@ -15,10 +15,11 @@ layout(set = 1, binding = 2) uniform texture2D t_ao;
 layout(set = 1, binding = 3) uniform texture2D t_depth;
 layout(set = 1, binding = 4) uniform texture2D t_lighting;
 layout(set = 1, binding = 5) uniform texture2D t_shadow;
-layout(set = 1, binding = 6) uniform texture2D taaBuffer;
-layout(rgba8, set = 1, binding = 7) uniform readonly image3D voxels;
+layout(set = 1, binding = 6) uniform texture2D t_normals;
+layout(set = 1, binding = 7) uniform texture2D taaBuffer;
+layout(rg32ui, set = 1, binding = 8) uniform readonly uimage3D voxels;
 
-layout(set = 1, binding = 8) uniform ExtendedMatrices {
+layout(set = 1, binding = 9) uniform ExtendedMatrices {
     mat4 InvModelView;
     mat4 ShadowView;
     mat4 ShadowProj;
@@ -26,14 +27,20 @@ layout(set = 1, binding = 8) uniform ExtendedMatrices {
     mat4 VoxelProj;
 };
 
-layout(set = 1, binding = 9) uniform Sun {
+layout(set = 1, binding = 10) uniform Sun {
     vec3 luminance;
     vec3 position; // (or direction, for directional light)
 } sun;
 
-layout(set = 1, binding = 10) uniform prevProj {
+layout(set = 1, binding = 11) uniform prevProj {
     mat4 prevProjection;
     mat4 prevModelView;
+};
+
+layout(set = 1, binding = 12) uniform EngineCommonMiscs {
+    vec2 resolution;
+    uint frameCount;
+    float frameTime;
 };
 
 void tonemap(inout vec3 color, float adapted_lum) {
@@ -101,6 +108,17 @@ float escape(in vec3 p, in vec3 d, in float R) {
 	float det = sqrt(det2);
 	float t1 = -b - det, t2 = -b + det;
 	return (t1 >= 0.) ? t1 : t2;
+}
+
+const float c_precision = 128.0;
+const float c_precisionp1 = c_precision + 1.0;
+
+vec3 float2color(float value) {
+	vec3 color;
+	color.r = mod(value, c_precisionp1) / c_precision;
+	color.b = mod(floor(value / c_precisionp1), c_precisionp1) / c_precision;
+	color.g = floor(value / (c_precisionp1 * c_precisionp1)) / c_precision;
+	return color;
 }
 
 // this can be explained: http://www.scratchapixel.com/lessons/3d-advanced-lessons/simulating-the-colors-of-the-sky/atmospheric-scattering/
@@ -198,28 +216,82 @@ void VL(inout vec3 color, vec3 wpos, vec3 wpos_cam) {
     color = color * (1.0 - contribute_factor * 0.5) + sun.luminance * contribute_factor;
 }
 
+vec3 getNormal(vec2 uv) {
+    vec3 raw = fma(texture(sampler2D(t_normals, s), uv).xyz, vec3(2.0), vec3(-1.0));
+    return normalize(raw);
+}
+
+vec3 lambertBrdf(vec3 wi, vec3 N, vec3 Li, vec3 albedo) {
+    return max(0.0, dot(wi, N)) * Li * albedo;
+}
+
+vec3 getIndirect(vec3 wpos, vec3 cspos, vec3 norm) {
+    vec3 Lo = vec3(0.0);
+
+    const float step_size = 0.05;
+
+    vec3 wnorm = mat3(InvModelView) * norm;
+
+    vec2 rands = vec2(rand21(inUV + float(frameCount)), rand21(inUV - 100.0 + float(frameCount)));
+    
+    vec3 direction = hemisphereSample_cos(rands.x, rands.y);
+    if (dot(direction, wnorm) < 0.0) direction = -direction;
+
+    mat4 w2voxel = VoxelProj * VoxelView;
+
+    vec3 march_pos = wpos + direction * (3.0 + rands.y) * step_size;
+
+    for (int i = 0; i < 256; i++) {
+        march_pos += direction * step_size;
+
+        vec3 voxelPos = (w2voxel * vec4(march_pos, 1.0)).xyz;
+        voxelPos.xy = voxelPos.xy * 0.5 + 0.5;
+        voxelPos *= 512.0;
+
+        uvec2 voxelData = imageLoad(voxels, ivec3(voxelPos)).rg;
+
+        if (voxelData.r != 0) {
+            vec3 voxColor = pow(unpackUnorm4x8(voxelData.r).rgb, vec3(2.2));
+            vec3 voxNorm = unpackSnorm4x8(voxelData.g).rgb;
+
+            // First bounce lighting
+            vec4 spos_proj = (ShadowProj * (ShadowView * vec4(march_pos + voxNorm * 0.05, 1.0)));
+            spos_proj /= spos_proj.w;
+            spos_proj.xy = spos_proj.xy * 0.5 + 0.5;
+            float shadowZ = texelFetch(sampler2D(t_shadow, s), ivec2(spos_proj.xy * 2048.0), 0).x;
+            float shade = step(spos_proj.z + 0.005, shadowZ);
+
+            Lo += voxColor * shade;//lambertBrdf(-sun.position, voxNorm, sun.luminance * shade, voxColor);
+
+            break;
+        }
+    }
+
+    return Lo;
+}
+
 void main() {
     // Albedo has a gamma = 2.2
     vec3 albedo = texture(sampler2D(t_albedo, s), inUV).rgb;
     albedo = pow(albedo, vec3(2.2));
-    
-    vec3 ao = texture(sampler2D(t_ao, s), inUV).rrr;
-    vec3 lighting = texture(sampler2D(t_lighting, s), inUV).rgb;
-    vec3 color = albedo * (ao * 0.2 + lighting);
-
+   
     vec3 cspos = getCSpos(inUV);
     vec3 wpos = (InvModelView * vec4(cspos, 1.0)).xyz;
+
+    vec3 cspos_cam = vec3(0.0);
+    vec3 wpos_cam = (InvModelView * vec4(cspos_cam, 1.0)).xyz;
+
+    vec3 ao = texture(sampler2D(t_ao, s), inUV).rrr;
+    vec3 lighting = texture(sampler2D(t_lighting, s), inUV).rgb;
+    vec3 color = getIndirect(wpos, cspos, getNormal(inUV));//albedo * (ao * getIndirect(wpos, cspos, getNormal(inUV)) + lighting);
 
     if (length(wpos) > 256.0) {
         // Sky
         color = scatter(vec3(0.0, 1e3, 0.0), normalize(wpos), -normalize(sun.position), Ra);
     }
-    
-    vec3 cspos_cam = vec3(0.0);
-    vec3 wpos_cam = (InvModelView * vec4(cspos_cam, 1.0)).xyz;
 
     // Volumetric lighting
-    VL(color, wpos, wpos_cam);
+    // VL(color, wpos, wpos_cam);
 
     tonemap(color, 1.0);
 
@@ -233,7 +305,7 @@ void main() {
     vec2 reprojUV = prevProjPos.st;
 
     if (clamp(reprojUV, vec2(0.0), vec2(1.0)) == reprojUV) {
-        float blendWeight = 0.5;
+        float blendWeight = 0.6;
         vec3 prevColor = texture(sampler2D(taaBuffer, s), reprojUV).rgb;
         color = mix(color, prevColor, blendWeight);
     }
@@ -265,10 +337,10 @@ void main() {
 
         for (int i = 0; i < 256; i++) {
             march_pos += march_delta;
-            vec4 voxelColor = imageLoad(voxels, ivec3(march_pos));
+            uvec2 voxelData = imageLoad(voxels, ivec3(march_pos)).rg;
 
-            if (voxelColor.a > 0.005) {
-                color = voxelColor.rgb;
+            if (voxelData.r != 0) {
+                color = unpackUnorm4x8(voxelData.r).rgb;
                 break;
             }
         }

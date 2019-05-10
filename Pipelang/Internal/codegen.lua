@@ -135,6 +135,9 @@ function codegen.glsl_gen(stage_list, curr_stage)
 		if obj.binding and string.sub(obj.type, 1, 5) == "image" then
             self.header = self.header ..
                 string.format("layout(set=%d, binding=%d, %s) uniform ", obj.set, obj.binding, obj.format)
+        elseif obj.binding and string.sub(obj.type, 1, 6) == "uimage" then
+            self.header = self.header ..
+                string.format("layout(set=%d, binding=%d, %s) uniform ", obj.set, obj.binding, obj.format)
         elseif obj.binding then
             self.header = self.header ..
                 string.format("layout(set=%d, binding=%d) uniform ", obj.set, obj.binding)

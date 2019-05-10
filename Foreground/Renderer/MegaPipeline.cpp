@@ -131,7 +131,12 @@ struct alignas(16) ExtendedMatricesConstants
     tc::Matrix4 VoxelProjection;
 };
 
-
+struct EngineCommonMiscs
+{
+    tc::Vector2 resolution;
+    uint32_t frameCount;
+    float frameTime;
+};
 
 void CMegaPipeline::Render()
 {
@@ -232,6 +237,10 @@ void CMegaPipeline::Render()
     lighting_deferred->blit2d();
     lighting_deferred->endRender();
 
+    EngineCommonMiscs miscs;
+    miscs.frameCount = frameCount;
+    miscs.resolution = tc::Vector2(width, height);
+
     gtao_color->beginRender(cmdList);
     gtao_color->setSampler("s", GlobalLinearSampler);
     gtao_color->setImageView("t_albedo", GBuffer0);
@@ -239,6 +248,7 @@ void CMegaPipeline::Render()
     gtao_color->setImageView("t_depth", GBufferDepth);
     gtao_color->setImageView("t_lighting", lighting_deferred->getRTViews()[0]);
     gtao_color->setImageView("t_shadow", ShadowDepth);
+    gtao_color->setImageView("t_normals", GBuffer1);
     gtao_color->setImageView("voxels", VoxelBuffer);
     gtao_color->setImageView("taaBuffer", taaImageView);
     gtao_color->setStruct("GlobalConstants", sizeof(CViewConstants),
@@ -247,6 +257,8 @@ void CMegaPipeline::Render()
                           &matricesConstants);
     gtao_color->setStruct("prevProj", sizeof(PreviousProjections), &prevProj);
     gtao_color->setStruct("Sun", sizeof(PerLightConstants), &directionalLightLists.lights[0]);
+    gtao_color->setStruct("EngineCommonMiscs", sizeof(EngineCommonMiscs),
+                          &miscs);
     gtao_color->blit2d();
 
     prevProj.PrevModelView = SceneView->GetViewConstants().ViewMat;
@@ -271,13 +283,6 @@ void CMegaPipeline::Render()
 
     frameCount++;
 }
-
-struct EngineCommonMiscs
-{
-    tc::Vector2 resolution;
-    uint32_t frameCount;
-    float frameTime;
-};
 
 void CMegaPipeline::BindEngineCommonForView(RHI::IRenderContext& context, uint32_t viewIndex)
 {
@@ -409,11 +414,12 @@ void CMegaPipeline::CreateVoxelizePass()
 {
     using namespace RHI;
 
-    VoxelImage = RenderDevice->CreateImage3D(EFormat::R8G8B8A8_UNORM, EImageUsageFlags::Storage,
+    VoxelImage =
+        RenderDevice->CreateImage3D(EFormat::R32G32_UINT, EImageUsageFlags::Storage,
                                              512, 512, 512);
 
     CImageViewDesc voxelViewDesc;
-    voxelViewDesc.Format = EFormat::R8G8B8A8_UNORM;
+    voxelViewDesc.Format = EFormat::R32G32_UINT;
     voxelViewDesc.Type = EImageViewType::View3D;
     voxelViewDesc.Range.Set(0, 1, 0, 1);
     VoxelBuffer = RenderDevice->CreateImageView(voxelViewDesc, VoxelImage);

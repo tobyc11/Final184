@@ -65,3 +65,17 @@ float h0(float a) {
 float h1(float a) {
     return 1.0 + w3(a) / (w2(a) + w3(a));
 }
+
+vec3 hemisphereSample_uniform(float u, float v) {
+    float phi = v * 2.0 * PI;
+    float cosTheta = 1.0 - u;
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+}
+    
+vec3 hemisphereSample_cos(float u, float v) {
+    float phi = v * 2.0 * PI;
+    float cosTheta = sqrt(1.0 - u);
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+}
