@@ -48,9 +48,10 @@ static void InspectorDFSNode(CSceneNode* scnNode, CSceneNode*& selectedNode)
         {
             tc::Quaternion quat;
             quat.FromEulerAngles(r.x, r.y, r.z);
+            scnNode->SetRotation(quat);
         }
         if (ImGui::DragFloat3("Scale", &s.x, 0.1f))
-            scnNode->SetScale(s);
+            scnNode->SetScale(s.x);
 
         for (CSceneNode* childNode : scnNode->GetChildren())
             InspectorDFSNode(childNode, selectedNode);
