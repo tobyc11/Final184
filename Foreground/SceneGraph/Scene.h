@@ -19,6 +19,9 @@ public:
 private:
     std::unique_ptr<CSceneNode> RootNode;
     std::unique_ptr<COctree> AccelStructure;
+
+    // TODO: what if this node goes away?
+    CSceneNode* InspectorSelectedNode = nullptr;
 };
 
 } /* namespace Foreground */

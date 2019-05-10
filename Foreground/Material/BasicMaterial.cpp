@@ -1,6 +1,8 @@
 #include "BasicMaterial.h"
 #include "ForegroundCommon.h"
 
+#include <imgui.h>
+
 namespace Foreground
 {
 
@@ -34,6 +36,16 @@ void CBasicMaterial::Bind(RHI::IRenderContext& context)
         bDSDirty = false;
     }
     context.BindRenderDescriptorSet(1, *DescriptorSet);
+}
+
+void CBasicMaterial::ImGuiEditor()
+{
+    if (ImGui::CollapsingHeader("Basic Material"))
+    {
+        ImGui::DragFloat3("Albedo", &Albedo.x);
+        ImGui::DragFloat("Metallic", &Metallic);
+        ImGui::DragFloat("Roughness", &Roughness);
+    }
 }
 
 }
