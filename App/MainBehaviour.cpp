@@ -41,7 +41,7 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
     self->directionalLightNode->SetName("directionalLightNode");
     self->lightDirectional = std::make_shared<CLight>(tc::Color(1.0, 0.95, 0.87), 4.0, ELightType::Directional);
     self->directionalLightNode->AddLight(self->lightDirectional);
-    self->directionalLightNode->Rotate(tc::Quaternion(-80.0, -30.0, 50.0), ETransformSpace::World);
+    self->directionalLightNode->Rotate(tc::Quaternion(-70.0, -30.0, 50.0), ETransformSpace::World);
     self->directionalLightNode->Translate(tc::Vector3(0.0, 16.0, 0.0), ETransformSpace::World);
     self->shadowCamera = std::make_shared<CCamera>(true);
     self->shadowCamera->SetFarClip(20.0);

@@ -222,26 +222,43 @@ vec3 getNormal(vec2 uv) {
 }
 
 vec3 lambertBrdf(vec3 wi, vec3 N, vec3 Li, vec3 albedo) {
-    return max(0.0, dot(wi, N)) * Li * albedo;
+    return abs(dot(wi, N)) * Li * albedo;
 }
 
-vec3 getIndirect(vec3 wpos, vec3 cspos, vec3 norm) {
+float hash(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * 0.2031);
+	p3 += dot(p3, p3.yzx + 19.19);
+	return fract((p3.x + p3.y) * p3.z);
+}
+
+struct HitState {
+    vec3 wpos;
+    vec3 wnorm;
+    vec3 albedo;
+    bool hit;
+};
+
+vec3 getIndirect(vec3 wpos, vec3 wnorm, inout HitState hit) {
     vec3 Lo = vec3(0.0);
 
-    const float step_size = 0.05;
+    const float step_size = 0.1;
 
-    vec3 wnorm = mat3(InvModelView) * norm;
-
-    vec2 rands = vec2(rand21(inUV + float(frameCount)), rand21(inUV - 100.0 + float(frameCount)));
+    vec2 rands = vec2(hash(inUV + float(frameCount % 8)), hash(vec2(-inUV.y, inUV.x) + float(frameCount % 8)));
     
     vec3 direction = hemisphereSample_cos(rands.x, rands.y);
     if (dot(direction, wnorm) < 0.0) direction = -direction;
 
     mat4 w2voxel = VoxelProj * VoxelView;
 
-    vec3 march_pos = wpos + direction * (3.0 + rands.y) * step_size;
+    vec3 march_pos = wpos + direction * (1.0 + rands.y) * step_size / dot(direction, wnorm);
 
-    for (int i = 0; i < 256; i++) {
+    vec3 startingVoxelPos = (w2voxel * vec4(wpos, 1.0)).xyz;
+    startingVoxelPos.xy = startingVoxelPos.xy * 0.5 + 0.5;
+    startingVoxelPos *= 512.0;
+
+    ivec3 starting_voxel = ivec3(startingVoxelPos);
+
+    for (int i = 0; i < 90; i++) {
         march_pos += direction * step_size;
 
         vec3 voxelPos = (w2voxel * vec4(march_pos, 1.0)).xyz;
@@ -255,13 +272,18 @@ vec3 getIndirect(vec3 wpos, vec3 cspos, vec3 norm) {
             vec3 voxNorm = unpackSnorm4x8(voxelData.g).rgb;
 
             // First bounce lighting
-            vec4 spos_proj = (ShadowProj * (ShadowView * vec4(march_pos + voxNorm * 0.05, 1.0)));
+            vec4 spos_proj = (ShadowProj * (ShadowView * vec4(march_pos + voxNorm * 0.06, 1.0)));
             spos_proj /= spos_proj.w;
             spos_proj.xy = spos_proj.xy * 0.5 + 0.5;
             float shadowZ = texelFetch(sampler2D(t_shadow, s), ivec2(spos_proj.xy * 2048.0), 0).x;
             float shade = step(spos_proj.z + 0.005, shadowZ);
 
-            Lo += voxColor * shade;//lambertBrdf(-sun.position, voxNorm, sun.luminance * shade, voxColor);
+            Lo += lambertBrdf(-sun.position, voxNorm, sun.luminance * shade, voxColor);
+
+            hit.wpos = march_pos;
+            hit.wnorm = voxNorm;
+            hit.albedo = voxColor;
+            hit.hit = true;
 
             break;
         }
@@ -281,9 +303,21 @@ void main() {
     vec3 cspos_cam = vec3(0.0);
     vec3 wpos_cam = (InvModelView * vec4(cspos_cam, 1.0)).xyz;
 
+    vec3 csnorm = getNormal(inUV);
+    vec3 wnorm = mat3(InvModelView) * csnorm;
+
     vec3 ao = texture(sampler2D(t_ao, s), inUV).rrr;
     vec3 lighting = texture(sampler2D(t_lighting, s), inUV).rgb;
-    vec3 color = getIndirect(wpos, cspos, getNormal(inUV));//albedo * (ao * getIndirect(wpos, cspos, getNormal(inUV)) + lighting);
+
+    HitState state;
+    state.hit = false;
+
+    vec3 inDirect = getIndirect(wpos, wnorm, state);
+    //if (state.hit) {
+    //    inDirect += state.albedo * getIndirect(state.wpos, state.wnorm, state);
+    //}
+
+    vec3 color = inDirect;//albedo * (ao * getIndirect(wpos, cspos, getNormal(inUV)) + lighting);
 
     if (length(wpos) > 256.0) {
         // Sky
