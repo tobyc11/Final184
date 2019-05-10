@@ -244,9 +244,9 @@ int main(int argc, char* argv[])
     // Start render loop
     std::thread physicsThread(game_logic, &game, main_behaviour);
 
+    bool mouseEnabled = false;
     while (game.isRunning.load())
     {
-
         bool mouseReady = false;
 
         SDL_Event event;
@@ -295,10 +295,12 @@ int main(int argc, char* argv[])
                     which_input = Control::Sticky::MoveDown; break;
                 case SDL_SCANCODE_ESCAPE:
                     SDL_SetRelativeMouseMode(SDL_FALSE);
+                    mouseEnabled = false;
                     input_valid = false;
                     break;
                 case SDL_SCANCODE_RETURN:
                     SDL_SetRelativeMouseMode(SDL_TRUE);
+                    mouseEnabled = true;
                     input_valid = false;
                     break;
                 default:
@@ -313,13 +315,13 @@ int main(int argc, char* argv[])
             }
             case SDL_MOUSEMOTION:
             {
-                mouseReady = true;
+                mouseReady = mouseEnabled ? true : false;
                 break;
             }
             }
         }
 
-        if (mouseReady) {
+        if (mouseReady && mouseEnabled) {
             int x, y;
             SDL_GetRelativeMouseState(&x, &y);
             game.control.lerpAnalog(Control::Analog::CameraYaw, (double)x, 0.3);
@@ -337,8 +339,6 @@ int main(int argc, char* argv[])
             typedef void (*event_init_function)(std::shared_ptr<CBehaviour>, Game*);
             reinterpret_cast<event_init_function>(handle)(main_behaviour, &game);
         }
-
-        game.device->WaitIdle();
     }
 
     // sync & exit
