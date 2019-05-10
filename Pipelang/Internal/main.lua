@@ -77,7 +77,7 @@ end
 GeometryShader "GSTriInTriOut" {
 	InputPrimitive = "triangles";
 	OutputPrimitive = "triangle_strip";
-	MaxVertices = 12;
+	MaxVertices = 3;
 };
 
 function VoxelGS()
@@ -88,14 +88,52 @@ function VoxelGS()
     Output "vec3" "iNormal";
     Output "vec4" "iTangent";
     Output "vec2" "iTexCoord0";
+	Output "uint" "iOrientation" "flat";
 	
     Code [[
+		vec3 viewPos[3];
 		int i;
+		for (i = 0; i < gl_in.length(); i++)
+		{
+			viewPos[i] = (ViewMat * ModelMat * gl_in[i].gl_Position).xyz;
+		}
+		vec3 faceNormal = cross(viewPos[1] - viewPos[0], viewPos[2] - viewPos[0]);
+		faceNormal = abs(faceNormal);
+		if (faceNormal.x > faceNormal.y)
+		{
+			if (faceNormal.x > faceNormal.z) //X
+				iOrientation = 1;
+			else //Z
+				iOrientation = 0;
+		}
+		else
+		{
+			if (faceNormal.y > faceNormal.z) //Y
+				iOrientation = 2;
+			else //Z
+				iOrientation = 0;
+		}
 		for(i = 0; i < gl_in.length(); i++)
 		{
-			vec4 pos = ModelMat * gl_in[i].gl_Position;
-			gl_Position = ProjMat * ViewMat * pos;
-			iPosition = (pos / pos.w).xyz;
+			gl_Position = ProjMat * vec4(viewPos[i], 1);
+			gl_Position = gl_Position / gl_Position.w;
+			if (iOrientation == 0)
+			{
+			}
+			else if (iOrientation == 1)
+			{
+				float newX = gl_Position.z * 2 - 1;
+				float newZ = -gl_Position.x / 2 + 0.5;
+				gl_Position.xz = vec2(newX, newZ);
+			}
+			else
+			{
+				float newY = 1 - gl_Position.z * 2;
+				float newZ = gl_Position.y / 2 + 0.5;
+				gl_Position.yz = vec2(newY, newZ);
+			}
+			vec4 worldPos = ModelMat * gl_in[i].gl_Position;
+			iPosition = (worldPos / worldPos.w).xyz;
 			iNormal = normalize(mat3(ViewMat) * mat3(ModelMat) * vgNormal[i]);
 			iTangent = vec4(0);
 			iTexCoord0 = vgTexCoord0[i];
@@ -204,12 +242,30 @@ end
 function VoxelPS()
     Input "vec4" "BaseColor";
     Input "vec3" "iNormal";
-    Input "vec3" "iPosition"
+    Input "vec3" "iPosition";
+	Input "uint" "iOrientation";
     Input "image3D" "voxels";
     Code [[
-        vec3 voxelizedPosition = gl_FragCoord.xyz;
-        voxelizedPosition.z *= 512.0;
-        imageStore(voxels, ivec3(voxelizedPosition), BaseColor);
+        vec3 voxelizedPosition;
+		uint maxDepth = imageSize(voxels).z - 1;
+		if (iOrientation == 0)
+		{
+			voxelizedPosition = gl_FragCoord.xyz;
+			voxelizedPosition.z *= maxDepth;
+		}
+		else if (iOrientation == 1)
+		{
+			voxelizedPosition.x = (1 - gl_FragCoord.z) * maxDepth;
+			voxelizedPosition.y = gl_FragCoord.y;
+			voxelizedPosition.z = gl_FragCoord.x;
+		}
+		else
+		{
+			voxelizedPosition.x = gl_FragCoord.x;
+			voxelizedPosition.y = gl_FragCoord.z * maxDepth;
+			voxelizedPosition.z = maxDepth - gl_FragCoord.y;
+		}
+		imageStore(voxels, ivec3(voxelizedPosition), BaseColor);
     ]]
 end
 
