@@ -21,6 +21,7 @@ layout(set = 1, binding = 1) uniform texture2D t_albedo;
 layout(set = 1, binding = 2) uniform texture2D t_normals;
 layout(set = 1, binding = 3) uniform texture2D t_depth;
 layout(set = 1, binding = 4) uniform texture2D t_shadow;
+layout(set = 1, binding = 6) uniform texture2D t_material;
 
 layout(set = 1, binding = 7) uniform ExtendedMatrices {
     mat4 InvModelView;
@@ -55,6 +56,19 @@ vec3 getCSpos(vec2 uv) {
     pos = InvProj * pos;
     return pos.xyz / pos.w;
 }
+
+vec2 getMaterial(vec2 uv) {
+    return texture(sampler2D(t_material, s), uv).yz;
+}
+
+float getMetallic(vec2 uv) {
+    return getMaterial(uv).y;
+}
+
+float getRoughness(vec2 uv) {
+    return getMaterial(uv).x;
+}
+
 
 #include "math.inc"
 
@@ -118,6 +132,77 @@ const vec2 poisson_12[12] = vec2 [] (
 	vec2(-0.791559, -0.59771)
 );
 
+vec3 metallicFresnel(vec3 wo, vec3 h, float metallicity) {
+    vec3 albedo = texture(sampler2D(t_albedo, s), inUV).rgb;
+    vec3 fTerm = mix(vec3(0.04), albedo, metallicity);
+    float cosTheta = max(dot(wo, h), 0.0);
+
+    return vec3(0.04) + vec3(0.96) * pow(1.0 - cosTheta, 5.0);
+}
+
+float NDF(vec3 normal, vec3 halfvec, float roughness) {
+    roughness *= roughness;
+    roughness *= roughness;
+
+    float cTheta = max(dot(normal, halfvec), 0.0);
+    cTheta *= cTheta;
+
+    float denom = cTheta * (roughness - 1.0) + 1.0;
+    denom *= denom;
+    return roughness / (PI * denom);
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = roughness + 1.0;
+    float k = r*r / 8.0;
+
+    float num = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+	
+    return num / denom;
+} 
+
+float G(vec3 normal, vec3 wi, vec3 wo, float roughness) {
+    float NdotV = max(dot(normal, wo), 0.0);
+    float NdotL = max(dot(normal, wi), 0.0);
+    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+	
+    return ggx1 * ggx2;
+}
+
+// Algorithm from https://learnopengl.com/PBR/Lighting
+vec3 illumination(vec3 lightVector, vec3 lightLuminance) {
+    vec3 cspos = getCSpos(inUV);
+    vec3 csnorm = getNormal(inUV);
+    float metallicity = getMetallic(inUV);
+    float roughness = getRoughness(inUV);
+
+    vec3 wi = normalize(lightVector);
+    vec3 wo = normalize(-cspos);
+    vec3 halfvec = normalize(wi + wo);
+
+    float distSq = dot(lightVector, lightVector);
+    float dist = fastSqrt(distSq);
+    vec3 radiance = lightLuminance / distSq;
+
+    float normalDist = NDF(csnorm, halfvec, roughness);
+    float g = G(csnorm, wi, wo, roughness);
+    vec3 fresnel = metallicFresnel(wo, halfvec, metallicity);
+
+    vec3 num = normalDist * g * fresnel;
+    float denom = 4.0 * max(dot(csnorm, wo), 0.0) * max(dot(csnorm, wi), 0.0);
+    vec3 specular = num / max(denom, 0.001);
+
+    vec3 diffuse = vec3(1.0) - fresnel;
+    diffuse *= 1 - metallicity; // Shiny things don't diffuse light well
+
+    float NdotL = max(dot(csnorm, wi / dist), 0.0);
+    return (diffuse + specular) * radiance * NdotL;
+}
+
+
 void main() {
     vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
 
@@ -128,9 +213,7 @@ void main() {
         Light L = Point.lights[i];
 
         vec3 lightVector = (ViewMat * vec4(L.position, 1.0)).xyz - cspos;
-        float distSq = dot(lightVector, lightVector);
-        float cosineLambert = max(0.0, dot(lightVector / fastSqrt(distSq), csnorm));
-        result.rgb += cosineLambert * L.luminance / (1.0 + distSq);
+        result.rgb += illumination(lightVector, L.luminance);
     }
 
     for (int i = 0; i < Directional.numLights; i++) {
@@ -152,7 +235,7 @@ void main() {
         }
         shade /= 12.0;
        
-        result.rgb += L.luminance * cosineLambert * shade;
+        result.rgb += illumination(lightVector, L.luminance) * shade;
     }
 
     lightingBuffer = result;

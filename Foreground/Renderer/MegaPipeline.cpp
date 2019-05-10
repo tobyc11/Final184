@@ -247,6 +247,7 @@ void CMegaPipeline::Render()
     lighting_deferred->setSampler("s", GlobalLinearSampler);
     lighting_deferred->setImageView("t_albedo", GBuffer0);
     lighting_deferred->setImageView("t_normals", GBuffer1);
+    lighting_deferred->setImageView("t_material", GBuffer2);
     lighting_deferred->setImageView("t_depth", GBufferDepth);
     lighting_deferred->setImageView("t_shadow", ShadowDepth);
     lighting_deferred->setStruct("GlobalConstants", sizeof(CViewConstants),
