@@ -76,6 +76,11 @@ function codegen.annotate_parse_tree(stage_list)
                                 location = programmable_output_counter
                             }
                             programmable_output_counter = programmable_output_counter + 1
+							return function (flags)
+								if flags == "flat" then
+									stage.outputs[name].interpolation = "flat"
+								end
+							end
                         end
                     end
                 end
@@ -134,11 +139,21 @@ function codegen.glsl_gen(stage_list, curr_stage)
             self.header = self.header ..
                 string.format("layout(set=%d, binding=%d) uniform ", obj.set, obj.binding)
         elseif obj.used_export and not input then
-            self.header = self.header ..
-                string.format("layout(location=%d) out ", obj.location)
+			if obj.interpolation then
+				self.header = self.header ..
+					string.format("layout(location=%d) %s out ", obj.location, obj.interpolation)
+			else
+				self.header = self.header ..
+					string.format("layout(location=%d) out ", obj.location)
+			end
         elseif obj.location and input then
-            self.header = self.header ..
-                string.format("layout(location=%d) in ", obj.location)
+			if obj.interpolation then
+				self.header = self.header ..
+					string.format("layout(location=%d) %s in ", obj.location, obj.interpolation)
+			else
+				self.header = self.header ..
+					string.format("layout(location=%d) in ", obj.location)
+			end
         elseif string.sub(name, 1, 6) == "Target" then
             -- A hack for PS outputs
             self.header = self.header ..
@@ -230,6 +245,5 @@ function codegen.make_pipeline(stage_list)
 	if codegen.result.geometry then
 		codegen.result.gs = codegen.glsl_gen(stage_list, "geometry")
 	end
-	print_table(codegen.result)
     return true
 end
