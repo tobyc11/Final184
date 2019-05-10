@@ -38,7 +38,8 @@ CMaterial::CMaterial(CDevice::Ref device, const string& VS_file, const string& P
 
         resources.insert_or_assign(id, res);
 
-        cout << "Shader " << VS_file << " : " << id << endl;
+        cout << "Shader " << VS_file << " : " << id << " set=" << res.Set
+             << " binding=" << res.Binding << endl;
     }
 
     for (CPipelineResource res : PS->GetShaderResources())
@@ -47,7 +48,8 @@ CMaterial::CMaterial(CDevice::Ref device, const string& VS_file, const string& P
 
         resources.insert_or_assign(id, res);
 
-        cout << "Shader " << PS_file << " : " << id << endl;
+        cout << "Shader " << PS_file << " : " << id << " set=" << res.Set
+             << " binding=" << res.Binding << endl;
     }
 
     this->device = device;
@@ -94,7 +96,7 @@ void CMaterial::createPipeline(int w, int h)
     int id = 0;
     for (auto& t : renderTargets)
     {
-        rpDesc.AddAttachment(renderTargetViews[id], EAttachmentLoadOp::Clear,
+        rpDesc.AddAttachment(renderTargetViews.at(id), EAttachmentLoadOp::Clear,
                              EAttachmentStoreOp::Store);
 
         if (t.isDepthStencil)
@@ -171,7 +173,7 @@ void CMaterial::setSampler(const std::string& id, RHI::CSampler::Ref obj)
 {
     if (ctx)
     {
-        CPipelineResource& r = resources[id];
+        CPipelineResource& r = resources.at(id);
         DescriptorSets[r.Set]->BindSampler(std::move(obj), r.Binding, 0);
     }
 }
@@ -180,7 +182,7 @@ void CMaterial::setImageView(const std::string& id, RHI::CImageView::Ref obj)
 {
     if (ctx)
     {
-        CPipelineResource& r = resources[id];
+        CPipelineResource& r = resources.at(id);
         DescriptorSets[r.Set]->BindImageView(std::move(obj), r.Binding, 0);
     }
 }
@@ -189,7 +191,7 @@ void CMaterial::setStruct(const std::string& id, size_t size, const void* obj)
 {
     if (ctx)
     {
-        CPipelineResource& r = resources[id];
+        CPipelineResource& r = resources.at(id);
         DescriptorSets[r.Set]->BindConstants(obj, size, r.Binding, 0);
     }
 }
@@ -198,7 +200,7 @@ void CMaterial::setBuffer(const std::string& id, CBuffer& obj, size_t offset)
 {
     if (ctx)
     {
-        auto desc = inputBuffers[id];
+        auto desc = inputBuffers.at(id);
         ctx->BindVertexBuffer(desc.Binding, obj, offset);
     }
 }
