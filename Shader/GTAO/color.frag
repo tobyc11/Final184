@@ -152,6 +152,45 @@ vec3 scatter(vec3 o, vec3 d, vec3 Ds, float l) {
 	return max(vec3(0.0), color);
 }
 
+const int samplesVL = 16;
+
+float miePhase(vec3 dir) {
+	float mu = normalize(dir).z;
+	float opmu2 = 1. + mu*mu;
+	float phaseR = .0596831 * opmu2;
+	float phaseM = .1193662 * (1. - g2) * opmu2;
+
+    return phaseM;
+}
+
+void VL(inout vec3 color, vec3 wpos, vec3 wpos_cam) {
+    vec3 spos = (ShadowView * vec4(wpos, 1.0)).xyz;
+    vec3 spos_cam = (ShadowView * vec4(wpos_cam, 1.0)).xyz;
+
+    float dither = rand21(inUV);
+
+    vec3 sample_delta = (spos - spos_cam) / float(samplesVL);
+    vec3 sample_pos = spos_cam + sample_delta * dither;
+
+    float contribute_factor = 0.0;
+
+    for (int i = 0; i < samplesVL; i++) {
+        sample_pos += sample_delta;
+
+        vec4 spos_proj = ShadowProj * vec4(sample_pos, 1.0);
+        spos_proj /= spos_proj.w;
+        spos_proj.xy = spos_proj.xy * 0.5 + 0.5;
+
+        float shadowZ = texelFetch(sampler2D(t_shadow, s), ivec2(spos_proj.xy * 2048.0), 0).x;
+        float shade = step(spos_proj.z, shadowZ);
+
+        contribute_factor += shade * miePhase(sample_pos - spos_cam);
+    }
+
+    contribute_factor *= 0.4 / float(samplesVL);
+
+    color = color * (1.0 - contribute_factor * 0.5) + sun.luminance * contribute_factor;
+}
 
 void main() {
     // Albedo has a gamma = 2.2
@@ -169,7 +208,12 @@ void main() {
         // Sky
         color = scatter(vec3(0.0, 1e3, 0.0), normalize(wpos), -normalize(sun.position), Ra);
     }
+    
+    vec3 cspos_cam = vec3(0.0);
+    vec3 wpos_cam = (InvModelView * vec4(cspos_cam, 1.0)).xyz;
 
+    // Volumetric lighting
+    VL(color, wpos, wpos_cam);
 
     if (inUV.x < 0.3333333 && inUV.y < 0.333333) {
         color = vec3(0.0);
@@ -178,10 +222,8 @@ void main() {
         
         vec3 cspos = getCSpos(uv);
         vec3 wpos = (InvModelView * vec4(cspos, 1.0)).xyz;
+        
         vec3 spos = (VoxelProj * (VoxelView * vec4(wpos, 1.0))).xyz;
-
-        vec3 cspos_cam = vec3(0.0);
-        vec3 wpos_cam = (InvModelView * vec4(cspos_cam, 1.0)).xyz;
         vec3 spos_cam = (VoxelProj * (VoxelView * vec4(wpos_cam, 1.0))).xyz;
 
         spos.xy = spos.xy * 0.5 + 0.5;
