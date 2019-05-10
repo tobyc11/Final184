@@ -32,6 +32,8 @@ public:
 
     void Bind(RHI::IRenderContext& context);
 
+	void ImGuiEditor();
+
 private:
     std::string Name;
 

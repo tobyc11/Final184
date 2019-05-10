@@ -18,7 +18,12 @@ CSceneNode::CSceneNode(CScene* scene, CSceneNode* parent)
         Scene->GetAccelStructure()->InsertObject(this);
 }
 
-void CSceneNode::SetName(const std::string& name) { Name = name; }
+void CSceneNode::SetName(const std::string& name)
+{
+    Name = name;
+    if (name.empty())
+        Name = "unnamed" + std::to_string(NameCounter++);
+}
 
 std::string CSceneNode::GetName() const { return Name; }
 
@@ -170,13 +175,16 @@ void CSceneNode::SetWorldTransform(const tc::Vector3& position, const tc::Quater
 
 void CSceneNode::Translate(const tc::Vector3& delta, ETransformSpace space)
 {
-    switch (space) {
-    case ETransformSpace::Local: {
+    switch (space)
+    {
+    case ETransformSpace::Local:
+    {
         auto pos = GetPosition();
         SetPosition(pos + delta);
         break;
     }
-    case ETransformSpace::World: {
+    case ETransformSpace::World:
+    {
         auto pos = GetWorldPosition();
         SetWorldPosition(pos + delta);
         break;
@@ -188,19 +196,22 @@ void CSceneNode::Translate(const tc::Vector3& delta, ETransformSpace space)
 
 void CSceneNode::Rotate(const tc::Quaternion& delta, ETransformSpace space)
 {
-    switch (space) {
-        case ETransformSpace::Local: {
-            auto pos = GetRotation();
-            SetRotation(delta * pos);
-            break;
-        }
-        case ETransformSpace::World: {
-            auto pos = GetWorldRotation();
-            SetWorldRotation(delta * pos);
-            break;
-        }
-        default:
-            throw "unimplemented";
+    switch (space)
+    {
+    case ETransformSpace::Local:
+    {
+        auto pos = GetRotation();
+        SetRotation(delta * pos);
+        break;
+    }
+    case ETransformSpace::World:
+    {
+        auto pos = GetWorldRotation();
+        SetWorldRotation(delta * pos);
+        break;
+    }
+    default:
+        throw "unimplemented";
     }
 }
 

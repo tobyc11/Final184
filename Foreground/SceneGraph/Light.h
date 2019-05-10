@@ -19,6 +19,8 @@ public:
     ELightType getType() const { return Type; }
     tc::Color getLuminance() const { return Color * Intensity; }
 
+	void ImGuiEditor();
+
 private:
     ELightType Type;
     tc::Color Color;
