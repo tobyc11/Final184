@@ -303,6 +303,9 @@ int main(int argc, char* argv[])
                     mouseEnabled = true;
                     input_valid = false;
                     break;
+                case SDL_SCANCODE_F11:
+                    SDL_SetWindowFullscreen(game.window, SDL_TRUE);
+                    break;
                 default:
                     input_valid = false;
                     break;

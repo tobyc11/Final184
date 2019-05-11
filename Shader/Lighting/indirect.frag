@@ -130,9 +130,9 @@ vec3 getIndirect(vec3 wpos, vec3 wnorm, float randSeed, inout HitState hit) {
 
     vec3 startingVoxelPos = (w2voxel * vec4(wpos, 1.0)).xyz;
     startingVoxelPos.xy = startingVoxelPos.xy * 0.5 + 0.5;
-    startingVoxelPos *= 256.0;
+    startingVoxelPos *= 128.0;
 
-    ivec3 starting_voxel = ivec3(startingVoxelPos);
+    ivec3 prev_voxel = ivec3(startingVoxelPos);
 
     int i = 0;
     for (; i < 60; i++) {
@@ -140,29 +140,39 @@ vec3 getIndirect(vec3 wpos, vec3 wnorm, float randSeed, inout HitState hit) {
 
         vec3 voxelPos = (w2voxel * vec4(march_pos, 1.0)).xyz;
         voxelPos.xy = voxelPos.xy * 0.5 + 0.5;
-        voxelPos *= 256.0;
+        voxelPos *= 128.0;
 
-        uvec2 voxelData = imageLoad(voxels, ivec3(voxelPos)).rg;
-
-        if (voxelData.r != 0) {
-            vec3 voxColor = pow(unpackColor565(voxelData.r), vec3(2.2));
-            vec3 voxNorm = unpackNormal565(voxelData.g).rgb;
-
-            // First bounce lighting
-            vec4 spos_proj = (ShadowProj * (ShadowView * vec4(march_pos + voxNorm * 0.06, 1.0)));
-            spos_proj /= spos_proj.w;
-            spos_proj.xy = spos_proj.xy * 0.5 + 0.5;
-            float shadowZ = texelFetch(sampler2D(t_shadow, s), ivec2(spos_proj.xy * 2048.0), 0).x;
-            float shade = step(spos_proj.z + 0.005, shadowZ);
-
-            vec3 r = lambertBrdf(-sun.position, voxNorm, voxColor) / max(0.01, NdotD);
-            hit.brdf = r;
-            Lo += sun.luminance * shade * r;
-            hit.wpos = march_pos;
-            hit.wnorm = voxNorm;
-            hit.hit = true;
-
+        if (voxelPos.x < 0   || voxelPos.y < 0   || voxelPos.z < 0 ||
+            voxelPos.x > 127 || voxelPos.y > 127 || voxelPos.z > 127)
+        {
             break;
+        }
+
+        if (prev_voxel != ivec3(voxelPos)) {
+            uvec2 voxelData = imageLoad(voxels, ivec3(voxelPos)).rg;
+
+            prev_voxel = ivec3(voxelPos);
+
+            if (voxelData.r != 0) {
+                vec3 voxColor = pow(unpackColor565(voxelData.r), vec3(2.2));
+                vec3 voxNorm = unpackNormal565(voxelData.g).rgb;
+
+                // First bounce lighting
+                vec4 spos_proj = (ShadowProj * (ShadowView * vec4(march_pos + voxNorm * 0.06, 1.0)));
+                spos_proj /= spos_proj.w;
+                spos_proj.xy = spos_proj.xy * 0.5 + 0.5;
+                float shadowZ = texelFetch(sampler2D(t_shadow, s), ivec2(spos_proj.xy * 2048.0), 0).x;
+                float shade = step(spos_proj.z + 0.005, shadowZ);
+
+                vec3 r = lambertBrdf(-sun.position, voxNorm, voxColor) / max(0.01, NdotD);
+                hit.brdf = r;
+                Lo += sun.luminance * shade * r;
+                hit.wpos = march_pos;
+                hit.wnorm = voxNorm;
+                hit.hit = true;
+
+                break;
+            }
         }
     }
 

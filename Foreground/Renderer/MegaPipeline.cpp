@@ -473,7 +473,7 @@ namespace Foreground
 
         VoxelImage =
             RenderDevice->CreateImage3D(EFormat::R16G16_UINT, EImageUsageFlags::Storage,
-                256, 256, 256);
+                                                 128, 128, 128);
 
         CImageViewDesc voxelViewDesc;
         voxelViewDesc.Format = EFormat::R16G16_UINT;
@@ -483,8 +483,8 @@ namespace Foreground
 
         CRenderPassDesc rpDesc;
         rpDesc.NextSubpass().ColorAttachments.clear();
-        rpDesc.Width = 256;
-        rpDesc.Height = 256;
+        rpDesc.Width = 128;
+        rpDesc.Height = 128;
         rpDesc.Layers = 1;
         VoxelizationPass = RenderDevice->CreateRenderPass(rpDesc);
     }
