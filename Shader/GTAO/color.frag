@@ -220,7 +220,7 @@ void main() {
     vec3 lighting = texture(sampler2D(t_lighting, s), inUV).rgb;
     vec3 indirect = texture(sampler2D(t_indirect, s), inUV).rgb;
 
-    vec3 color = albedo * (ao * indirect + lighting);
+    vec3 color = albedo * (ao * indirect) + lighting;
 
     if (length(wpos) > 256.0) {
         // Sky

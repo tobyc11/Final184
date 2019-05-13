@@ -61,6 +61,10 @@ vec2 getMaterial(vec2 uv) {
     return texture(sampler2D(t_material, s), uv).yz;
 }
 
+vec3 getBaseColor(vec2 uv) {
+    return texture(sampler2D(t_albedo, s), uv).xyz;
+}
+
 float getMetallic(vec2 uv) {
     return getMaterial(uv).y;
 }
@@ -71,7 +75,7 @@ float getRoughness(vec2 uv) {
 
 
 #include "math.inc"
-
+#include "BRDF.inc"
 
 const float shadowMapResolution = 2048.0;
 const vec2 shadowPixSize = vec2(1.0 / shadowMapResolution);
@@ -132,95 +136,65 @@ const vec2 poisson_12[12] = vec2 [] (
 	vec2(-0.791559, -0.59771)
 );
 
-vec3 metallicFresnel(vec3 wo, vec3 h, float metallicity) {
-    vec3 albedo = texture(sampler2D(t_albedo, s), inUV).rgb;
-    vec3 fTerm = mix(vec3(0.04), albedo, metallicity);
-    float cosTheta = max(dot(wo, h), 0.0);
-
-    return vec3(0.04) + vec3(0.96) * pow(1.0 - cosTheta, 5.0);
-}
-
-float NDF(vec3 normal, vec3 halfvec, float roughness) {
-    roughness *= roughness;
-    roughness *= roughness;
-
-    float cTheta = max(dot(normal, halfvec), 0.0);
-    cTheta *= cTheta;
-
-    float denom = cTheta * (roughness - 1.0) + 1.0;
-    denom *= denom;
-    return roughness / (PI * denom);
-}
-
-float GeometrySchlickGGX(float NdotV, float roughness)
+void BRDF_Init(inout BRDFContext context)
 {
-    float r = roughness + 1.0;
-    float k = r*r / 8.0;
-
-    float num = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
-	
-    return num / denom;
-} 
-
-float G(vec3 normal, vec3 wi, vec3 wo, float roughness) {
-    float NdotV = max(dot(normal, wo), 0.0);
-    float NdotL = max(dot(normal, wi), 0.0);
-    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
-	
-    return ggx1 * ggx2;
-}
-
-// Algorithm from https://learnopengl.com/PBR/Lighting
-vec3 illumination(vec3 lightVector, vec3 lightLuminance) {
-    vec3 cspos = getCSpos(inUV);
-    vec3 csnorm = getNormal(inUV);
-    float metallicity = getMetallic(inUV);
+    vec3 baseColor = getBaseColor(inUV);
+    float metallic = getMetallic(inUV);
     float roughness = getRoughness(inUV);
+    float a = roughness * roughness;
 
-    vec3 wi = normalize(lightVector);
-    vec3 wo = normalize(-cspos);
-    vec3 halfvec = normalize(wi + wo);
-
-    float distSq = dot(lightVector, lightVector);
-    float dist = fastSqrt(distSq);
-    vec3 radiance = lightLuminance / distSq;
-
-    float normalDist = NDF(csnorm, halfvec, roughness);
-    float g = G(csnorm, wi, wo, roughness);
-    vec3 fresnel = metallicFresnel(wo, halfvec, metallicity);
-
-    vec3 num = normalDist * g * fresnel;
-    float denom = 4.0 * max(dot(csnorm, wo), 0.0) * max(dot(csnorm, wi), 0.0);
-    vec3 specular = num / max(denom, 0.001);
-
-    vec3 diffuse = vec3(1.0) - fresnel;
-    diffuse *= 1 - metallicity; // Shiny things don't diffuse light well
-
-    float NdotL = max(dot(csnorm, wi / dist), 0.0);
-    return (diffuse + specular) * radiance * NdotL;
+    const vec3 dielectricSpecular = vec3(0.04);
+    context.Cdiff = mix(baseColor, vec3(0), metallic);
+    context.F0 = mix(dielectricSpecular, baseColor, metallic);
+    context.a2 = a * a;
 }
 
+vec3 BRDF_CookTorrance(BRDFContext context)
+{
+    // BRDF calculation
+    vec3 F = F_Schlick(context.F0, context.VoH);
+    float D = D_GGX(context.a2, context.NoH);
+    float Vis = Vis_SmithJoint(context.a2, context.NoV, context.NoL);
+    vec3 BRDF_Spec = D * F * Vis;
+
+    vec3 BRDF_Diff = (1 - F) * context.Cdiff / PI;
+
+    return BRDF_Diff + BRDF_Spec;
+}
 
 void main() {
-    vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
+    vec4 result = vec4(0.0);
 
     vec3 cspos = getCSpos(inUV);
     vec3 csnorm = getNormal(inUV);
+    vec3 V = -normalize(cspos);
+
+    BRDFContext context;
+    BRDF_Init(context);
+    context.NoV = clamp(dot(csnorm, V), 0, 1);
 
     for (int i = 0; i < Point.numLights; i++) {
-        Light L = Point.lights[i];
+        Light light = Point.lights[i];
 
-        vec3 lightVector = (ViewMat * vec4(L.position, 1.0)).xyz - cspos;
-        result.rgb += illumination(lightVector, L.luminance);
+        vec3 L = (ViewMat * vec4(light.position, 1.0)).xyz - cspos;
+        float r2 = dot(L, L);
+        L = L / sqrt(r2);
+        vec3 H = normalize(V + L);
+        context.NoL = clamp(dot(csnorm, L), 0, 1);
+        context.NoH = clamp(dot(csnorm, H), 0, 1);
+        context.VoH = clamp(dot(V, H), 0, 1);
+
+        result.rgb += BRDF_CookTorrance(context) * light.luminance * context.NoL / r2;
     }
 
     for (int i = 0; i < Directional.numLights; i++) {
-        Light L = Directional.lights[i];
+        Light light = Directional.lights[i];
 
-        vec3 lightVector = -normalize(mat3(ViewMat) * L.position);
-        float cosineLambert = max(0.0, dot(lightVector, csnorm));
+        vec3 L = -normalize(mat3(ViewMat) * light.position);
+        vec3 H = normalize(V + L);
+        context.NoL = clamp(dot(csnorm, L), 0, 1);
+        context.NoH = clamp(dot(csnorm, H), 0, 1);
+        context.VoH = clamp(dot(V, H), 0, 1);
 
         vec3 wpos = (InvModelView * vec4(cspos + csnorm * 0.01, 1.0)).xyz;
         vec4 spos = (ShadowProj * (ShadowView * vec4(wpos, 1.0)));
@@ -235,7 +209,7 @@ void main() {
         }
         shade /= 12.0;
        
-        result.rgb += illumination(lightVector, L.luminance) * shade;
+        result.rgb += BRDF_CookTorrance(context) * light.luminance * context.NoL * shade;
     }
 
     lightingBuffer = result;
