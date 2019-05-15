@@ -62,7 +62,7 @@ vec2 getMaterial(vec2 uv) {
 }
 
 vec3 getBaseColor(vec2 uv) {
-    return texture(sampler2D(t_albedo, s), uv).xyz;
+    return pow(texture(sampler2D(t_albedo, s), uv).xyz, vec3(2.2));
 }
 
 float getMetallic(vec2 uv) {
@@ -171,7 +171,7 @@ void main() {
 
     BRDFContext context;
     BRDF_Init(context);
-    context.NoV = clamp(dot(csnorm, V), 0, 1);
+    context.NoV = abs(dot(csnorm, V));
 
     for (int i = 0; i < Point.numLights; i++) {
         Light light = Point.lights[i];
@@ -181,8 +181,8 @@ void main() {
         L = L / sqrt(r2);
         vec3 H = normalize(V + L);
         context.NoL = clamp(dot(csnorm, L), 0, 1);
-        context.NoH = clamp(dot(csnorm, H), 0, 1);
-        context.VoH = clamp(dot(V, H), 0, 1);
+        context.NoH = abs(dot(csnorm, H));
+        context.VoH = abs(dot(V, H));
 
         result.rgb += BRDF_CookTorrance(context) * light.luminance * context.NoL / r2;
     }
@@ -193,8 +193,8 @@ void main() {
         vec3 L = -normalize(mat3(ViewMat) * light.position);
         vec3 H = normalize(V + L);
         context.NoL = clamp(dot(csnorm, L), 0, 1);
-        context.NoH = clamp(dot(csnorm, H), 0, 1);
-        context.VoH = clamp(dot(V, H), 0, 1);
+        context.NoH = abs(dot(csnorm, H));
+        context.VoH = abs(dot(V, H));
 
         vec3 wpos = (InvModelView * vec4(cspos + csnorm * 0.01, 1.0)).xyz;
         vec4 spos = (ShadowProj * (ShadowView * vec4(wpos, 1.0)));

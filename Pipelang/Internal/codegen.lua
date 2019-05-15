@@ -44,6 +44,7 @@ function codegen.annotate_parse_tree(stage_list)
             stage.inputs = {}
             stage.outputs = {}
             stage.code = ""
+			stage.header = ""
             local PROG_MT = {}
             PROG_MT.__index = function (t, k)
                 if symtab[k] then
@@ -184,7 +185,10 @@ function codegen.glsl_gen(stage_list, curr_stage)
     end
 
     function glsl_src:get_string()
-        return "#version 450\n" .. self.header
+        return "#version 450\n" .. [[		struct Light {
+			vec3 luminance;
+			vec3 position; // (or direction, for directional light)
+		};]] .. self.header
         .. "\nvoid main() {\n" .. self.main
         .. "}\n"
     end
@@ -217,6 +221,8 @@ function codegen.glsl_gen(stage_list, curr_stage)
                 end
             end
         elseif stage.class == "programmable" and stage.stage == curr_stage then
+			glsl_src:emit_header(stage.header)
+
             for name, var in pairs(stage.inputs) do
                 if var.used_export and not imported_vars[name] then
                     glsl_src:emit_global_decl(name, var, true)

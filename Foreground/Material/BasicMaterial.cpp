@@ -42,9 +42,12 @@ void CBasicMaterial::ImGuiEditor()
 {
     if (ImGui::CollapsingHeader("Basic Material"))
     {
-        ImGui::DragFloat3("Albedo", &Albedo.x);
-        ImGui::DragFloat("Metallic", &Metallic);
-        ImGui::DragFloat("Roughness", &Roughness);
+        if (ImGui::ColorEdit3("Albedo", &Albedo.x))
+            bDSDirty = true;
+        if (ImGui::DragFloat("Metallic", &Metallic, 0.01f, 0.0f, 1.0f))
+            bDSDirty = true;
+        if (ImGui::DragFloat("Roughness", &Roughness, 0.01f, 0.0f, 1.0f))
+            bDSDirty = true;
     }
 }
 

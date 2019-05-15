@@ -221,7 +221,23 @@ function BasicZOnlyMaterial()
 end
 
 ParameterBlock "VoxelData" : Set(3) {
-    Output "uimage3D" "voxels" : Stages "P" : Format "rg16ui";
+    Output "image3D" "voxels" : Stages "P" : Format "rgba16";
+	Output "texture2D" "t_shadow" : Stages "P";
+    Output "uniform" "ExtendedMatrices" [[
+		mat4 InvModelView;
+		mat4 ShadowView;
+		mat4 ShadowProj;
+		mat4 VoxelView;
+		mat4 VoxelProj;
+    ]] : Stages "P";
+	Output "uniform" "directionalLights" [[
+		vec3 luminance;
+		vec3 position;
+	]] : Stages "P";
+	Output "uniform" "pointLights" [[
+		Light lights[100];
+		int numLights;
+	]] : Stages "P";
 };
 
 function GBufferPS()
@@ -245,6 +261,7 @@ function VoxelPS()
     Input "vec3" "iPosition";
 	Input "uint" "iOrientation";
     Input "uimage3D" "voxels";
+
     Code [[
         vec3 voxelizedPosition;
 		uint maxDepth = imageSize(voxels).z - 1;
@@ -266,11 +283,31 @@ function VoxelPS()
 			voxelizedPosition.z = maxDepth - gl_FragCoord.y;
 		}
 
+		// Directional light
+        vec4 spos_proj = (ShadowProj * (ShadowView * vec4(iPosition, 1.0)));
+        spos_proj /= spos_proj.w;
+        spos_proj.xy = spos_proj.xy * 0.5 + 0.5;
+        float shadowZ = texelFetch(sampler2D(t_shadow, GlobalLinearSampler), ivec2(spos_proj.xy * 2048.0), 0).x;
+        float shade = step(spos_proj.z - 0.01, shadowZ);
+
+		vec3 baseColor = pow(BaseColor.rgb, vec3(2.2));
+		vec3 Lo = baseColor * luminance * abs(dot(-position, iNormal)) * shade;
+
+		for (int i = 0; i < numLights; i++)
+		{
+			vec3 L = lights[i].position - iPosition;
+			float r2 = dot(L, L);
+			L = normalize(L);
+			Lo += baseColor * lights[i].luminance / r2 * max(dot(L, iNormal), 0.0);
+		}
+
         // RGB 565
         uint packedColor = (uint(BaseColor.r * 31) << 11) | (uint(BaseColor.g * 63) << 5) | uint(BaseColor.b * 31);
         uint packedNormal = (uint(iNormal.r * 16 + 15) << 11) | (uint(iNormal.g * 32 + 31) << 5) | uint(iNormal.b * 16 + 15);
+		uint packedLo = (uint(Lo.r * 31) << 11) | (uint(Lo.g * 63) << 5) | uint(Lo.b * 31);
 
-		imageStore(voxels, ivec3(voxelizedPosition), uvec4(packedColor, packedNormal, 0, 0));
+		// imageStore(voxels, ivec3(voxelizedPosition), uvec4(packedColor, packedNormal, packedLo, 0));
+		imageStore(voxels, ivec3(voxelizedPosition), vec4(Lo, 1));
     ]]
 end
 

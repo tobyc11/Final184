@@ -1,4 +1,5 @@
 #pragma once
+#include "ComputePass.h"
 #include "ForegroundCommon.h"
 #include "GBufferRenderer.h"
 #include "SceneGraph/SceneView.h"
@@ -24,8 +25,7 @@ class CMegaPipeline
 public:
     explicit CMegaPipeline(RHI::CSwapChain::Ref swapChain);
 
-    void SetSceneView(std::unique_ptr<CSceneView> sceneView,
-                      std::unique_ptr<CSceneView> shadowView,
+    void SetSceneView(std::unique_ptr<CSceneView> sceneView, std::unique_ptr<CSceneView> shadowView,
                       std::unique_ptr<CSceneView> voxelizerSceneView);
 
     void Resize();
@@ -70,6 +70,7 @@ private:
     RHI::CImageView::Ref GBufferDepth;
     RHI::CImageView::Ref ShadowDepth;
     RHI::CImageView::Ref VoxelBuffer;
+    RHI::CImageView::Ref VoxelLod[9];
     RHI::CImageView::Ref taaImageView;
     RHI::CImageView::Ref indirectTemporal;
     RHI::CRenderPass::Ref GBufferPass;
@@ -80,6 +81,7 @@ private:
     RHI::CSampler::Ref GlobalLinearSampler;
     RHI::CSampler::Ref GlobalLinearSamplerClamped;
     RHI::CSampler::Ref GlobalNearestSampler;
+    RHI::CSampler::Ref VoxelSampler;
     RHI::CPipeline::Ref BlitPipeline;
 
     CGBufferRenderer GBufferRenderer;
@@ -92,9 +94,11 @@ private:
 
     std::shared_ptr<CMaterial> lighting_deferred;
     std::shared_ptr<CMaterial> lighting_indirect;
-    
+
     std::shared_ptr<CMaterial> indirect_blurX;
     std::shared_ptr<CMaterial> indirect_blurY;
+
+    std::unique_ptr<CComputePass> VoxelDownfilter;
 
     RHI::CDescriptorSet::Ref EngineCommonDS;
 };

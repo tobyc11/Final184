@@ -56,11 +56,11 @@ static void init(std::shared_ptr<CBehaviour> selfref, Game* game)
     self->voxelizerCamNode->Rotate(tc::Quaternion(-90.0, 0.0, 0.0), ETransformSpace::World);
     self->voxelizerCamNode->Translate(tc::Vector3(0.0, 16.0, 0.0), ETransformSpace::World);
     self->voxelizerCamera = std::make_shared<CCamera>(true);
-    self->voxelizerCamera->SetFarClip(20.0);
+    self->voxelizerCamera->SetFarClip(21.0);
     self->voxelizerCamera->SetNearClip(1.0);
     self->voxelizerCamera->SetAspectRatio(1.0);
-    self->voxelizerCamera->SetMagX(20.0);
-    self->voxelizerCamera->SetMagY(20.0);
+    self->voxelizerCamera->SetMagX(10.0);
+    self->voxelizerCamera->SetMagY(10.0);
     self->voxelizerCamNode->SetCamera(self->voxelizerCamera);
 
     CglTFSceneImporter importer(self->scene, *game->device);

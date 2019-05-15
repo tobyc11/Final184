@@ -55,6 +55,11 @@ void tonemap(inout vec3 color, float adapted_lum) {
 	color = pow(color, vec3(1.0/2.2));
 }
 
+void reinhard_tonemap(inout vec3 color, float adapted_lum) {
+    vec3 mapped = color / (color + vec3(1.0));
+    color = pow(mapped, vec3(1.0 / 2.2));
+}
+
 #include "math.inc"
 
 float getDepth(vec2 uv) {
@@ -220,7 +225,7 @@ void main() {
     vec3 lighting = texture(sampler2D(t_lighting, s), inUV).rgb;
     vec3 indirect = texture(sampler2D(t_indirect, s), inUV).rgb;
 
-    vec3 color = albedo * (ao * indirect) + lighting;
+    vec3 color = ao * (lighting + indirect);
 
     if (length(wpos) > 256.0) {
         // Sky

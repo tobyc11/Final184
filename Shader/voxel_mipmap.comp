@@ -1,0 +1,102 @@
+#version 450
+
+layout(rgba16ui, set = 1, binding = 0) uniform uimage3D voxels;
+layout(rgba16ui, set = 1, binding = 1) uniform uimage3D outVoxels;
+
+vec3 unpackColor565(uint x) {
+    return vec3(
+        float((x & 0XF800) >> 11) / 31.0,
+        float((x & 0x7E0 ) >>  5) / 63.0,
+        float((x & 0x1F  )      ) / 31.0
+    );
+}
+
+vec3 unpackNormal565(uint x) {
+    return normalize(vec3(
+        float((x & 0XF800) >> 11) / 16.0 - 1.0,
+        float((x & 0x7E0 ) >>  5) / 32.0 - 1.0,
+        float((x & 0x1F  )      ) / 16.0 - 1.0
+    ));
+}
+
+uint packColor565(vec3 c)
+{
+    return (uint(c.r * 31) << 11) | (uint(c.g * 63) << 5) | uint(c.b * 31);
+}
+
+uint packNormal565(vec3 c)
+{
+    return (uint(c.r * 16 + 15) << 11) | (uint(c.g * 32 + 31) << 5) | uint(c.b * 16 + 15);
+}
+
+void main()
+{
+    ivec3 targetPos = ivec3(gl_GlobalInvocationID.xyz);
+
+    ivec3 pos;
+    uvec4 data;
+    vec3 baseColor = vec3(0);
+    vec3 normal = vec3(0);
+    vec3 diffuse = vec3(0);
+
+    const ivec3 offsets[8] = ivec3[8](
+        ivec3(0, 0, 0),
+        ivec3(0, 0, 1),
+        ivec3(0, 1, 0),
+        ivec3(0, 1, 1),
+        ivec3(1, 0, 0),
+        ivec3(1, 0, 1),
+        ivec3(1, 1, 0),
+        ivec3(1, 1, 1)
+    );
+
+    for (int i = 0; i < 8; i++)
+    {
+        pos = targetPos * ivec3(2) + offsets[i];
+        data = imageLoad(voxels, pos);
+        baseColor += unpackColor565(data.r);
+        normal += unpackNormal565(data.g);
+        diffuse += unpackColor565(data.b);
+    }
+    
+    baseColor /= 8.0;
+    normal /= 8.0;
+    diffuse /= 8.0;
+    
+    uint packedColor = (uint(baseColor.r * 31) << 11) | (uint(baseColor.g * 63) << 5) | uint(baseColor.b * 31);
+    uint packedNormal = (uint(normal.r * 16 + 15) << 11) | (uint(normal.g * 32 + 31) << 5) | uint(normal.b * 16 + 15);
+	uint packedDiffuse = (uint(diffuse.r * 31) << 11) | (uint(diffuse.g * 63) << 5) | uint(diffuse.b * 31);
+    imageStore(outVoxels, targetPos, uvec4(packedColor, packedNormal, packedDiffuse, 0));
+}
+
+// #include <EngineCommon.h>
+
+// layout(set = 1, binding = 1) uniform ExtendedMatrices {
+//     mat4 InvModelView;
+//     mat4 ShadowView;
+//     mat4 ShadowProj;
+//     mat4 VoxelView;
+//     mat4 VoxelProj;
+//     mat4 InvShadowView;
+// };
+
+// layout(set = 1, binding = 2) uniform texture2D t_shadow;
+
+// void main()
+// {
+//     sampler2D shadowSampler = sampler2D(t_shadow, GlobalLinearSampler);
+//     ivec2 pixelPos = gl_GlobalInvocationID.xy;
+//     ivec2 shadowSize = textureSize(shadowSampler);
+//     float shadowZ = texelFetch(shadowSampler, pixelPos).x;
+//     vec4 shadowNDC = vec3(vec2(pixelPos) / (shadowSize - ivec2(1, 1)) * 2.0 - 1.0, shadowZ, 1.0);
+//     vec4 worldPos = InvShadowView * InvProj * shadowNDC;
+//     vec3 voxelPos = (VoxelProj * VoxelView * worldPos).xyz;
+//     voxelPos.xy = voxelPos.xy * 0.5 + 0.5;
+//     ivec3 voxelBounds = imageSize(voxels) - ivec3(1);
+//     ivec3 voxelIndex = voxelPos * voxelBounds;
+
+//     // Abandoned, now using the same voxelization pass for lighting
+//     // uvec4 v = imageLoad(voxels, voxelIndex);
+//     // v[2] = packRGB565()
+//     // imageAtomicAdd(voxels, voxelIndex, vec)
+// }

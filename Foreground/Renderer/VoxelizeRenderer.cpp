@@ -91,12 +91,6 @@ void CVoxelizeRenderer::Render(RHI::IRenderContext& context, const tc::Matrix3x4
     }
 
     auto& lib = PipelangContext.GetLibrary("Internal");
-    if (!VoxelDS)
-    {
-        auto& pb = lib.GetParameterBlock("VoxelData");
-        VoxelDS = pb.CreateDescriptorSet();
-        pb.BindImageView(VoxelDS, Parent->getVoxelsImageView(), "voxels");
-    }
 
     if (auto triMesh = std::dynamic_pointer_cast<CTriangleMesh>(primitive->GetShape()))
     {

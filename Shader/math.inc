@@ -75,8 +75,9 @@ vec3 hemisphereSample_uniform(float u, float v) {
     
 vec3 hemisphereSample_cos(float u, float v) {
     float phi = v * 2.0 * PI;
+    u = clamp(u, 0, 1);
     float cosTheta = sqrt(1.0 - u);
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    float sinTheta = sqrt(u);
     return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
 }
 
@@ -228,3 +229,16 @@ float bayer2(vec2 a){
 #define bayer16(a)  (bayer8( .5f*(a))*.25f+bayer2(a))
 #define bayer32(a)  (bayer16(.5f*(a))*.25f+bayer2(a))
 #define bayer64(a)  (bayer32(.5f*(a))*.25f+bayer2(a))
+
+vec3 perp_hm(vec3 u)
+{
+    vec3 a = abs(u);
+    vec3 v;
+    if (a.x <= a.y && a.x <= a.z)
+        v = vec3(0, -u.z, u.y);
+    else if (a.y <= a.x && a.y <= a.z)
+        v = vec3(-u.z, 0, u.x);
+    else
+        v = vec3(-u.y, u.x, 0);
+    return v;
+}

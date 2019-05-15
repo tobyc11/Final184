@@ -17,13 +17,15 @@ public:
     explicit CVoxelizeRenderer(CMegaPipeline* p);
 
     void SetRenderPass(RHI::CRenderPass::Ref renderPass, uint32_t subpass = 0);
-	
+
     void RenderList(RHI::IRenderContext& context, const std::vector<tc::Matrix3x4>& modelMats,
                     const std::vector<CPrimitive*>& primitives);
 
     void PreparePrimitiveResources(std::shared_ptr<CPrimitive> primitive);
     void ClearResourceCache();
     void GarbageCollectResourceCache();
+
+    void SetVoxelDS(RHI::CDescriptorSet::Ref ds) { VoxelDS = ds; }
 
 protected:
     void Render(RHI::IRenderContext& context, const tc::Matrix3x4& modelMat, CPrimitive* primitive);
